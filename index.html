@@ -3,91 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLB Scout | Diagnostic Edition</title>
+    <title>MLB Scout | Daily Board</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .stat-scroll::-webkit-scrollbar { height: 4px; }
-        .stat-scroll::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
-        @keyframes pulse-border { 0% { border-color: #0ea5e9; } 50% { border-color: #334155; } 100% { border-color: #0ea5e9; } }
-        .loading-active { animation: pulse-border 2s infinite; }
+        .game-card { transition: transform 0.2s; }
+        .game-card:hover { transform: translateY(-4px); }
+        .stat-badge { font-variant-numeric: tabular-nums; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-200 font-sans pb-12">
+<body class="bg-slate-950 text-slate-200 font-sans min-h-screen">
 
-    <header class="bg-slate-900 border-b border-slate-800 p-6 no-print">
-        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+    <header class="bg-slate-900 border-b border-slate-800 p-6 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
             <div>
                 <h1 class="text-2xl font-black italic tracking-tighter text-white">MLB<span class="text-sky-500">SCOUT</span></h1>
-                <p id="debug-line" class="text-[10px] text-slate-500 font-mono uppercase tracking-widest mt-1">Status: Ready</p>
+                <p class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Live Data Feed • Consolidated</p>
             </div>
-            <div class="flex items-center gap-3 bg-slate-800 p-1.5 rounded-lg border border-slate-700">
-                <input type="date" id="datePicker" class="bg-slate-900 text-sky-400 p-2 rounded font-bold text-sm outline-none border border-slate-700">
-                <button onclick="fetchGames()" class="bg-sky-600 hover:bg-sky-500 text-white px-6 py-2 rounded font-black text-xs uppercase shadow-lg transition transform active:scale-95">Run Diagnostics</button>
-            </div>
+            <div id="date-display" class="text-sm font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded-full">
+                </div>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto p-4 md:p-8">
-        
-        <div id="status-box" class="hidden mb-8 p-6 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl">
-            <h3 class="text-[10px] font-black text-sky-500 uppercase mb-4 tracking-widest">Network Activity Log</h3>
-            <div id="log-entries" class="font-mono text-[11px] space-y-2 text-slate-400">
-                </div>
+    <main class="max-w-6xl mx-auto p-6">
+        <div id="loading-state" class="flex flex-col items-center justify-center py-20">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500 mb-4"></div>
+            <p class="text-slate-500 animate-pulse">Scanning league feeds...</p>
         </div>
 
-        <section id="rawDumpSection" class="hidden mb-12">
-            <div class="flex justify-between items-end mb-2">
-                <h2 class="text-[10px] font-black text-sky-500 uppercase tracking-widest">Extracted Intelligence</h2>
-                <button onclick="copyRaw()" class="text-[10px] font-bold text-slate-500 hover:text-white uppercase">Copy All ⎘</button>
-            </div>
-            <textarea id="rawTextArea" class="w-full h-48 p-4 text-[11px] font-mono bg-slate-900 text-slate-400 rounded-xl border border-slate-800 outline-none" readonly></textarea>
-        </section>
+        <div id="error-state" class="hidden bg-red-900/20 border border-red-500/50 p-4 rounded-lg text-red-400 mb-6">
+            Failed to retrieve game data. Please check if the Netlify function is deployed.
+        </div>
 
-        <div id="gamesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        <div id="game-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
     </main>
 
     <script>
-        const d = new Date(); d.setDate(d.getDate() - 1);
-        document.getElementById('datePicker').value = d.toISOString().split('T')[0];
+        async function init() {
+            const grid = document.getElementById('game-grid');
+            const loading = document.getElementById('loading-state');
+            const errorState = document.getElementById('error-state');
+            const dateDisplay = document.getElementById('date-display');
 
-        function addLog(msg, type = 'info') {
-            const logBox = document.getElementById('status-box');
-            const container = document.getElementById('log-entries');
-            logBox.classList.remove('hidden');
-            const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-emerald-400' : 'text-sky-400');
-            container.innerHTML += `<div class="${color}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+            // Set current date display
+            dateDisplay.innerText = new Date().toLocaleDateString('en-US', { 
+                month: 'long', day: 'numeric', year: 'numeric' 
+            });
+
+            try {
+                // Fetch from your Netlify function
+                const response = await fetch('/.netlify/functions/get-mlb');
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const games = await response.json();
+                loading.classList.add('hidden');
+
+                if (games.length === 0) {
+                    grid.innerHTML = `<p class="col-span-full text-center text-slate-500 py-10">No games scheduled for today.</p>`;
+                    return;
+                }
+
+                grid.innerHTML = games.map(game => {
+                    const isFinal = game.status.includes("Final");
+                    const statusColor = isFinal ? "text-slate-500" : "text-emerald-400 animate-pulse";
+
+                    return `
+                        <div class="game-card bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+                            <div class="bg-slate-800/50 px-4 py-2 flex justify-between items-center text-[11px] font-bold uppercase tracking-wider">
+                                <span class="text-slate-400 truncate mr-2">${game.venue}</span>
+                                <span class="${statusColor}">${game.status}</span>
+                            </div>
+
+                            <div class="p-5">
+                                <div class="flex justify-between items-center mb-4">
+                                    <div class="text-center w-5/12">
+                                        <div class="text-lg font-black text-white">${game.teams.away.name.split(' ').pop()}</div>
+                                        <div class="text-[10px] text-slate-500">${game.teams.away.record}</div>
+                                    </div>
+                                    <div class="text-slate-700 font-black italic text-xl">VS</div>
+                                    <div class="text-center w-5/12">
+                                        <div class="text-lg font-black text-white">${game.teams.home.name.split(' ').pop()}</div>
+                                        <div class="text-[10px] text-slate-500">${game.teams.home.record}</div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-slate-950/50 rounded-lg p-3 mb-4 border border-slate-800">
+                                    <h4 class="text-[9px] uppercase font-bold text-slate-500 mb-2 tracking-widest">Probable Pitchers</h4>
+                                    <div class="grid grid-cols-2 gap-2 text-xs">
+                                        <div class="border-l-2 border-sky-500 pl-2">
+                                            <div class="text-slate-400 text-[10px]">Away</div>
+                                            <div class="font-semibold text-slate-200 truncate">${game.teams.away.probable}</div>
+                                        </div>
+                                        <div class="border-l-2 border-orange-500 pl-2">
+                                            <div class="text-slate-400 text-[10px]">Home</div>
+                                            <div class="font-semibold text-slate-200 truncate">${game.teams.home.probable}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="text-[9px] uppercase font-bold text-sky-500 mb-2 tracking-widest">Players to Watch</h4>
+                                    <div class="space-y-2">
+                                        ${game.notablePlayers.length > 0 ? game.notablePlayers.map(player => `
+                                            <div class="flex justify-between items-center text-sm bg-slate-800/30 p-2 rounded">
+                                                <span class="text-slate-300">
+                                                    <span class="font-mono text-[10px] text-slate-500 mr-1">${player.pos}</span>
+                                                    ${player.name}
+                                                </span>
+                                                <span class="stat-badge font-mono font-bold text-sky-400">${player.avg}</span>
+                                            </div>
+                                        `).join('') : '<p class="text-[11px] text-slate-600 italic text-center">Scouting data pending...</p>'}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <a href="https://www.mlb.com/gameday/${game.gamePk}" target="_blank" 
+                               class="block w-full text-center py-2 bg-slate-800 text-[10px] font-bold text-slate-400 hover:bg-sky-600 hover:text-white transition-colors uppercase">
+                                Open MLB Gameday
+                            </a>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error(err);
+                loading.classList.add('hidden');
+                errorState.classList.remove('hidden');
+            }
         }
 
-        async function fetchGameData() {
-  const response = await fetch('/.netlify/functions/mlb-data');
-  const data = await response.json();
-
-  const statusDisplay = document.getElementById('game-status');
-  const venueDisplay = document.getElementById('venue-info');
-  
-  // 1. Update Metadata
-  statusDisplay.innerText = data.gameInfo.status;
-  venueDisplay.innerText = `At ${data.gameInfo.venue}`;
-  
-  // 2. Style Logic: Red/Bold for Final, Green for Live
-  if (data.gameInfo.status === "Final") {
-    statusDisplay.style.color = "#d32f2f"; // Red
-    statusDisplay.style.fontWeight = "bold";
-  } else {
-    statusDisplay.style.color = "#2e7d32"; // Green
-  }
-
-  // 3. Link GameCenter
-  const linkBtn = document.getElementById('gamecenter-link');
-  linkBtn.href = data.gameInfo.gameCenterLink;
-
-  // 4. Render Teams (Example for Away Team)
-  console.log("Away Team Record:", data.teams.away.record);
-  console.log("Probable Starter:", data.gameInfo.probables.away);
-  
-  // Loop through data.teams.away.players and data.teams.home.players 
-  // to build your player stat rows here.
-}
+        // Run on load
+        init();
     </script>
 </body>
 </html>
