@@ -3,156 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLB Scout | Pro Box Edition</title>
+    <title>MLB Scout | Diagnostic Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom scrollbar for the roster bubbles */
         .stat-scroll::-webkit-scrollbar { height: 4px; }
         .stat-scroll::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
-        .game-card { transition: all 0.2s ease-in-out; }
-        .game-card:hover { transform: translateY(-2px); border-color: #334155; }
+        @keyframes pulse-border { 0% { border-color: #0ea5e9; } 50% { border-color: #334155; } 100% { border-color: #0ea5e9; } }
+        .loading-active { animation: pulse-border 2s infinite; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-200 font-sans pb-12">
 
-    <header class="bg-slate-900 border-b border-slate-800 p-6 shadow-2xl no-print">
+    <header class="bg-slate-900 border-b border-slate-800 p-6 no-print">
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
-                <h1 class="text-2xl font-black italic tracking-tighter text-white">
-                    MLB<span class="text-sky-500 underline decoration-2 underline-offset-4">SCOUT</span>
-                </h1>
-                <p class="text-[10px] text-slate-500 font-mono uppercase tracking-widest mt-1">Advanced Box-Score Engine</p>
+                <h1 class="text-2xl font-black italic tracking-tighter text-white">MLB<span class="text-sky-500">SCOUT</span></h1>
+                <p id="debug-line" class="text-[10px] text-slate-500 font-mono uppercase tracking-widest mt-1">Status: Ready</p>
             </div>
             <div class="flex items-center gap-3 bg-slate-800 p-1.5 rounded-lg border border-slate-700">
                 <input type="date" id="datePicker" class="bg-slate-900 text-sky-400 p-2 rounded font-bold text-sm outline-none border border-slate-700">
-                <button onclick="fetchGames()" class="bg-sky-600 hover:bg-sky-500 text-white px-6 py-2 rounded font-black text-xs uppercase transition shadow-lg">Fetch Data</button>
+                <button onclick="fetchGames()" class="bg-sky-600 hover:bg-sky-500 text-white px-6 py-2 rounded font-black text-xs uppercase shadow-lg transition transform active:scale-95">Run Diagnostics</button>
             </div>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto p-4 md:p-8">
         
-        <div id="status" class="hidden mb-6 p-4 rounded-lg bg-sky-900/30 text-sky-400 text-center border border-sky-800/50 font-bold italic">
-            Parsing Live Feed & Box Scores...
+        <div id="status-box" class="hidden mb-8 p-6 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl">
+            <h3 class="text-[10px] font-black text-sky-500 uppercase mb-4 tracking-widest">Network Activity Log</h3>
+            <div id="log-entries" class="font-mono text-[11px] space-y-2 text-slate-400">
+                </div>
         </div>
 
         <section id="rawDumpSection" class="hidden mb-12">
             <div class="flex justify-between items-end mb-2">
-                <h2 class="text-[10px] font-black text-sky-500 uppercase tracking-widest">AI Raw Intelligence Buffer</h2>
-                <button onclick="copyRaw()" class="text-[10px] font-bold text-slate-400 hover:text-white uppercase">Copy for Analysis ⎘</button>
+                <h2 class="text-[10px] font-black text-sky-500 uppercase tracking-widest">Extracted Intelligence</h2>
+                <button onclick="copyRaw()" class="text-[10px] font-bold text-slate-500 hover:text-white uppercase">Copy All ⎘</button>
             </div>
-            <textarea id="rawTextArea" class="w-full h-48 p-4 text-[11px] font-mono bg-slate-900 text-slate-400 rounded-xl border border-slate-800 shadow-inner focus:ring-1 focus:ring-sky-500 outline-none" readonly></textarea>
+            <textarea id="rawTextArea" class="w-full h-48 p-4 text-[11px] font-mono bg-slate-900 text-slate-400 rounded-xl border border-slate-800 outline-none" readonly></textarea>
         </section>
 
-        <div id="gamesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            </div>
+        <div id="gamesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </main>
 
     <script>
-        // Date Setup
         const d = new Date(); d.setDate(d.getDate() - 1);
         document.getElementById('datePicker').value = d.toISOString().split('T')[0];
 
-        function copyRaw() { 
-            const el = document.getElementById('rawTextArea'); el.select(); 
-            document.execCommand('copy'); alert("AI Buffer Copied."); 
+        function addLog(msg, type = 'info') {
+            const logBox = document.getElementById('status-box');
+            const container = document.getElementById('log-entries');
+            logBox.classList.remove('hidden');
+            const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-emerald-400' : 'text-sky-400');
+            container.innerHTML += `<div class="${color}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
         }
 
         async function fetchGames() {
             const date = document.getElementById('datePicker').value;
-            const status = document.getElementById('status');
             const container = document.getElementById('gamesContainer');
             const rawText = document.getElementById('rawTextArea');
+            const logEntries = document.getElementById('log-entries');
             
+            // CONFIG: Make sure this exactly matches your Netlify domain
             const SITE_URL = "https://my-mlb-report.netlify.app"; 
             
-            status.classList.remove('hidden');
+            logEntries.innerHTML = '';
             container.innerHTML = '';
             document.getElementById('rawDumpSection').classList.add('hidden');
+            document.getElementById('debug-line').innerText = "Status: Working...";
+
+            addLog(`Initiating fetch for date: ${date}`);
+            addLog(`Targeting: ${SITE_URL}/.netlify/functions/get-mlb`);
+
+            // Use an AbortController to catch timeouts manually on the frontend
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s frontend timeout
 
             try {
-                const response = await fetch(`${SITE_URL}/.netlify/functions/get-mlb?date=${date}`);
+                const response = await fetch(`${SITE_URL}/.netlify/functions/get-mlb?date=${date}`, {
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                addLog(`Server responded with status: ${response.status} ${response.statusText}`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP Error: ${response.status}. This usually means the function crashed or timed out on Netlify's end.`);
+                }
+
+                addLog(`Parsing JSON payload...`);
                 const games = await response.json();
+                addLog(`Success! Received data for ${games.length} games.`, 'success');
 
                 let buffer = `MLB SCOUT REPORT: ${date}\n==============================\n`;
 
                 games.forEach(game => {
-                    // Update AI Buffer with the deep stats
                     buffer += `\n[GAME]: ${game.headline}\n`;
-                    buffer += `[AWAY]: ${game.teams.away.name} - Roster & Stats:\n`;
                     game.teams.away.roster.forEach(p => buffer += `  - ${p.name} (${p.pos}): ${p.stats}\n`);
-                    buffer += `[HOME]: ${game.teams.home.name} - Roster & Stats:\n`;
                     game.teams.home.roster.forEach(p => buffer += `  - ${p.name} (${p.pos}): ${p.stats}\n`);
                     buffer += `------------------------------\n`;
 
-                    // Generate Card
                     const card = document.createElement('div');
-                    card.className = "game-card bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-xl";
+                    card.className = "bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-xl loading-active";
                     
                     const isFinished = game.status.includes("Final") || game.status.includes("Progress");
 
                     card.innerHTML = `
-                        <div class="bg-slate-950 px-4 py-2 border-b border-slate-800 flex justify-between items-center">
-                            <span class="text-[9px] font-black text-sky-500 uppercase tracking-tighter">${game.status}</span>
+                        <div class="bg-slate-950 px-4 py-2 border-b border-slate-800 flex justify-between">
+                            <span class="text-[9px] font-black text-sky-500 uppercase">${game.status}</span>
                             <span class="text-[9px] font-bold text-slate-500 truncate ml-4">${game.venue}</span>
                         </div>
-                        
                         <div class="p-5 flex-grow">
-                            <div class="flex justify-between items-center mb-6">
-                                <div class="text-center w-5/12">
-                                    <p class="text-xs font-black text-white truncate">${game.teams.away.name}</p>
-                                    <p class="text-4xl font-black text-white tracking-tighter">${game.teams.away.score}</p>
-                                </div>
-                                <div class="text-slate-700 font-black italic text-sm">VS</div>
-                                <div class="text-center w-5/12">
-                                    <p class="text-xs font-black text-white truncate">${game.teams.home.name}</p>
-                                    <p class="text-4xl font-black text-white tracking-tighter">${game.teams.home.score}</p>
-                                </div>
+                            <div class="flex justify-between items-center mb-6 text-white text-center">
+                                <div class="w-5/12"><p class="text-xs font-black">${game.teams.away.name}</p><p class="text-4xl font-black">${game.teams.away.score}</p></div>
+                                <div class="text-slate-700 italic text-sm font-black">VS</div>
+                                <div class="w-5/12"><p class="text-xs font-black">${game.teams.home.name}</p><p class="text-4xl font-black">${game.teams.home.score}</p></div>
                             </div>
-
-                            <div class="space-y-4">
-                                ${isFinished ? `
-                                    <div>
-                                        <p class="text-[8px] font-bold text-slate-500 uppercase mb-2 tracking-widest">Top Performers</p>
-                                        <div class="stat-scroll flex gap-2 overflow-x-auto pb-2">
-                                            ${game.teams.away.roster.slice(0, 4).map(p => `
-                                                <div class="flex-shrink-0 bg-slate-800 border border-slate-700 p-2 rounded text-[9px]">
-                                                    <p class="font-bold text-sky-400">${p.name}</p>
-                                                    <p class="text-slate-400 font-mono text-[8px]">${p.stats}</p>
-                                                </div>
-                                            `).join('')}
-                                            ${game.teams.home.roster.slice(0, 4).map(p => `
-                                                <div class="flex-shrink-0 bg-slate-800 border border-slate-700 p-2 rounded text-[9px]">
-                                                    <p class="font-bold text-white">${p.name}</p>
-                                                    <p class="text-slate-400 font-mono text-[8px]">${p.stats}</p>
-                                                </div>
-                                            `).join('')}
-                                        </div>
-                                    </div>
-                                ` : `
-                                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
-                                        <p class="text-[9px] text-slate-400 font-medium italic">"${game.headline}"</p>
-                                    </div>
-                                `}
-                            </div>
+                            ${isFinished ? `
+                                <div class="stat-scroll flex gap-2 overflow-x-auto pb-2 border-t border-slate-800 pt-3">
+                                    ${game.teams.away.roster.slice(0, 3).map(p => `<div class="flex-shrink-0 bg-slate-800 p-2 rounded text-[8px] border border-slate-700"><p class="font-bold text-sky-400">${p.name}</p><p class="text-slate-500">${p.stats}</p></div>`).join('')}
+                                    ${game.teams.home.roster.slice(0, 3).map(p => `<div class="flex-shrink-0 bg-slate-800 p-2 rounded text-[8px] border border-slate-700"><p class="font-bold text-white">${p.name}</p><p class="text-slate-500">${p.stats}</p></div>`).join('')}
+                                </div>
+                            ` : `<p class="text-[10px] text-slate-500 italic border-t border-slate-800 pt-3 text-center">${game.headline}</p>`}
                         </div>
-
-                        <a href="https://www.mlb.com/gameday/${game.id}" target="_blank" 
-                           class="block w-full bg-sky-900/20 border-t border-slate-800 text-sky-400 text-center py-3 text-[10px] font-black hover:bg-sky-600 hover:text-white transition uppercase tracking-widest">
-                            View Box Score
-                        </a>
+                        <a href="https://www.mlb.com/gameday/${game.id}" target="_blank" class="block w-full bg-slate-950 text-sky-500 text-center py-3 text-[9px] font-black uppercase hover:bg-sky-600 hover:text-white">Gameday</a>
                     `;
                     container.appendChild(card);
                 });
 
                 rawText.value = buffer;
                 document.getElementById('rawDumpSection').classList.remove('hidden');
-                status.classList.add('hidden');
+                document.getElementById('debug-line').innerText = "Status: Complete";
 
             } catch (err) {
-                status.innerText = "Fetch Failed. Check Netlify Logs.";
-                status.classList.replace('bg-sky-900/30', 'bg-red-900/30');
-                status.classList.replace('text-sky-400', 'text-red-400');
+                if (err.name === 'AbortError') {
+                    addLog("Error: Request Timed Out. The Netlify function is taking too long (>15s) to process all the games.", 'error');
+                } else if (err.message.includes('Failed to fetch')) {
+                    addLog("Error: Failed to Fetch. This is usually a CORS issue or the site name is wrong.", 'error');
+                } else {
+                    addLog(`Error: ${err.message}`, 'error');
+                }
+                document.getElementById('debug-line').innerText = "Status: Failed";
             }
         }
     </script>
