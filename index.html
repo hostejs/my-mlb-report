@@ -3,137 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLB Scout | Daily Board</title>
+    <title>MLB Scout | AI Bouncer</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .game-card { transition: transform 0.2s; }
-        .game-card:hover { transform: translateY(-4px); }
-        .stat-badge { font-variant-numeric: tabular-nums; }
-    </style>
 </head>
-<body class="bg-slate-950 text-slate-200 font-sans min-h-screen">
+<body class="bg-slate-950 text-slate-200 p-4 lg:p-8">
 
-    <header class="bg-slate-900 border-b border-slate-800 p-6 sticky top-0 z-50">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
+    <div class="max-w-7xl mx-auto">
+        <header class="flex justify-between items-end mb-8 border-b border-slate-800 pb-4">
             <div>
-                <h1 class="text-2xl font-black italic tracking-tighter text-white">MLB<span class="text-sky-500">SCOUT</span></h1>
-                <p class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Live Data Feed • Consolidated</p>
+                <h1 class="text-3xl font-black italic text-white tracking-tighter">MLB<span class="text-sky-500">SCOUT</span></h1>
+                <p class="text-xs text-slate-500 font-mono">Status: Consolidated Feed Active</p>
             </div>
-            <div id="date-display" class="text-sm font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded-full">
-                </div>
-        </div>
-    </header>
+            <button onclick="copyDump()" class="bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-bold px-4 py-2 rounded uppercase transition">Copy AI Data Dump</button>
+        </header>
 
-    <main class="max-w-6xl mx-auto p-6">
-        <div id="loading-state" class="flex flex-col items-center justify-center py-20">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500 mb-4"></div>
-            <p class="text-slate-500 animate-pulse">Scanning league feeds...</p>
+        <div id="game-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            <div class="col-span-full text-center py-12 animate-pulse text-slate-500">Initializing scouting reports...</div>
         </div>
 
-        <div id="error-state" class="hidden bg-red-900/20 border border-red-500/50 p-4 rounded-lg text-red-400 mb-6">
-            Failed to retrieve game data. Please check if the Netlify function is deployed.
+        <div class="border-t border-slate-800 pt-8">
+            <h2 class="text-sm font-bold text-slate-400 mb-4 uppercase tracking-widest text-center">Raw AI Data String</h2>
+            <textarea id="ai-dump" readonly class="w-full h-48 bg-slate-900 border border-slate-800 rounded-lg p-4 font-mono text-[10px] text-sky-400 focus:outline-none focus:border-sky-500" placeholder="Waiting for data..."></textarea>
         </div>
-
-        <div id="game-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            </div>
-    </main>
+    </div>
 
     <script>
-        async function init() {
+        async function load() {
             const grid = document.getElementById('game-grid');
-            const loading = document.getElementById('loading-state');
-            const errorState = document.getElementById('error-state');
-            const dateDisplay = document.getElementById('date-display');
-
-            // Set current date display
-            dateDisplay.innerText = new Date().toLocaleDateString('en-US', { 
-                month: 'long', day: 'numeric', year: 'numeric' 
-            });
+            const dump = document.getElementById('ai-dump');
 
             try {
-                // Fetch from your Netlify function
-                const response = await fetch('/.netlify/functions/get-mlb');
-                if (!response.ok) throw new Error('Network response was not ok');
+                const res = await fetch('/.netlify/functions/get-mlb');
+                const data = await res.json();
                 
-                const games = await response.json();
-                loading.classList.add('hidden');
+                // 1. Fill the AI Dump immediately
+                dump.value = JSON.stringify(data);
 
-                if (games.length === 0) {
-                    grid.innerHTML = `<p class="col-span-full text-center text-slate-500 py-10">No games scheduled for today.</p>`;
-                    return;
-                }
-
-                grid.innerHTML = games.map(game => {
+                // 2. Build the visual cards
+                grid.innerHTML = data.map(game => {
                     const isFinal = game.status.includes("Final");
-                    const statusColor = isFinal ? "text-slate-500" : "text-emerald-400 animate-pulse";
+                    
+                    // Filter for "Good Players" to show in UI (Top 4 based on AVG or ERA)
+                    const getTop = (players) => players
+                        .filter(p => (p.stats.avg && parseFloat(p.stats.avg) > .270) || (p.stats.era && parseFloat(p.stats.era) < 4.00))
+                        .slice(0, 4);
+
+                    const awayStars = getTop(game.teams.away.players);
+                    const homeStars = getTop(game.teams.home.players);
 
                     return `
-                        <div class="game-card bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-                            <div class="bg-slate-800/50 px-4 py-2 flex justify-between items-center text-[11px] font-bold uppercase tracking-wider">
-                                <span class="text-slate-400 truncate mr-2">${game.venue}</span>
-                                <span class="${statusColor}">${game.status}</span>
+                        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex flex-col">
+                            <div class="bg-slate-800/50 px-4 py-2 flex justify-between items-center text-[10px] font-bold">
+                                <span class="text-slate-400 truncate">${game.venue}</span>
+                                <span class="${isFinal ? 'text-red-500' : 'text-emerald-400'}">${game.status}</span>
                             </div>
 
-                            <div class="p-5">
-                                <div class="flex justify-between items-center mb-4">
+                            <div class="p-5 flex-grow">
+                                <div class="flex justify-between items-center mb-6">
                                     <div class="text-center w-5/12">
-                                        <div class="text-lg font-black text-white">${game.teams.away.name.split(' ').pop()}</div>
-                                        <div class="text-[10px] text-slate-500">${game.teams.away.record}</div>
+                                        <div class="text-xl font-black">${game.teams.away.name.split(' ').pop()}</div>
+                                        <div class="text-[10px] text-slate-500 font-bold">${game.teams.away.record}</div>
                                     </div>
-                                    <div class="text-slate-700 font-black italic text-xl">VS</div>
+                                    <div class="text-slate-700 font-black italic tracking-tighter">VS</div>
                                     <div class="text-center w-5/12">
-                                        <div class="text-lg font-black text-white">${game.teams.home.name.split(' ').pop()}</div>
-                                        <div class="text-[10px] text-slate-500">${game.teams.home.record}</div>
+                                        <div class="text-xl font-black">${game.teams.home.name.split(' ').pop()}</div>
+                                        <div class="text-[10px] text-slate-500 font-bold">${game.teams.home.record}</div>
                                     </div>
                                 </div>
 
-                                <div class="bg-slate-950/50 rounded-lg p-3 mb-4 border border-slate-800">
-                                    <h4 class="text-[9px] uppercase font-bold text-slate-500 mb-2 tracking-widest">Probable Pitchers</h4>
-                                    <div class="grid grid-cols-2 gap-2 text-xs">
-                                        <div class="border-l-2 border-sky-500 pl-2">
+                                <div class="bg-black/40 p-3 rounded-lg border border-slate-800 mb-4">
+                                    <p class="text-[9px] uppercase text-slate-500 font-bold mb-2 tracking-widest">Starting / Decisions</p>
+                                    <div class="grid grid-cols-2 gap-4 text-xs">
+                                        <div class="border-l border-sky-500 pl-2">
                                             <div class="text-slate-400 text-[10px]">Away</div>
-                                            <div class="font-semibold text-slate-200 truncate">${game.teams.away.probable}</div>
+                                            <div class="font-bold truncate">${isFinal && game.decisions.winner ? 'W: ' + game.decisions.winner.fullName : game.teams.away.probable}</div>
                                         </div>
-                                        <div class="border-l-2 border-orange-500 pl-2">
+                                        <div class="border-l border-orange-500 pl-2">
                                             <div class="text-slate-400 text-[10px]">Home</div>
-                                            <div class="font-semibold text-slate-200 truncate">${game.teams.home.probable}</div>
+                                            <div class="font-bold truncate">${isFinal && game.decisions.loser ? 'L: ' + game.decisions.loser.fullName : game.teams.home.probable}</div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div>
-                                    <h4 class="text-[9px] uppercase font-bold text-sky-500 mb-2 tracking-widest">Players to Watch</h4>
-                                    <div class="space-y-2">
-                                        ${game.notablePlayers.length > 0 ? game.notablePlayers.map(player => `
-                                            <div class="flex justify-between items-center text-sm bg-slate-800/30 p-2 rounded">
-                                                <span class="text-slate-300">
-                                                    <span class="font-mono text-[10px] text-slate-500 mr-1">${player.pos}</span>
-                                                    ${player.name}
-                                                </span>
-                                                <span class="stat-badge font-mono font-bold text-sky-400">${player.avg}</span>
-                                            </div>
-                                        `).join('') : '<p class="text-[11px] text-slate-600 italic text-center">Scouting data pending...</p>'}
-                                    </div>
+                                <div class="space-y-1">
+                                    <p class="text-[9px] uppercase text-sky-500 font-bold mb-2 tracking-widest">Scouting Highlights</p>
+                                    ${[...awayStars, ...homeStars].map(p => `
+                                        <div class="flex justify-between text-[11px] bg-slate-800/20 px-2 py-1 rounded">
+                                            <span class="text-slate-300 font-medium"><span class="text-slate-600 mr-1">${p.pos}</span>${p.name}</span>
+                                            <span class="font-mono text-sky-400">${p.stats.avg || p.stats.era}</span>
+                                        </div>
+                                    `).join('')}
                                 </div>
                             </div>
-                            
-                            <a href="https://www.mlb.com/gameday/${game.gamePk}" target="_blank" 
-                               class="block w-full text-center py-2 bg-slate-800 text-[10px] font-bold text-slate-400 hover:bg-sky-600 hover:text-white transition-colors uppercase">
-                                Open MLB Gameday
-                            </a>
                         </div>
                     `;
                 }).join('');
 
             } catch (err) {
-                console.error(err);
-                loading.classList.add('hidden');
-                errorState.classList.remove('hidden');
+                grid.innerHTML = `<div class="col-span-full text-red-500 text-center">Error fetching feed. Check Netlify Logs.</div>`;
             }
         }
 
-        // Run on load
-        init();
+        function copyDump() {
+            const textarea = document.getElementById('ai-dump');
+            textarea.select();
+            document.execCommand('copy');
+            alert('Data dump copied to clipboard!');
+        }
+
+        load();
     </script>
 </body>
 </html>
