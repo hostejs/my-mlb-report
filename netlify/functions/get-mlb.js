@@ -1,75 +1,82 @@
-const fetch = require('node-fetch');
+const axios = require('axios');
 
-exports.handler = async (event) => {
-    const date = event.queryStringParameters.date || new Date().toISOString().split('T')[0];
-    const API_ROOT = "https://statsapi.mlb.com"; 
+exports.handler = async (event, context) => {
+  try {
+    // Replace this with your actual live feed URL
+    const API_URL = 'YOUR_LIVE_FEED_URL'; 
+    const response = await axios.get(API_URL);
+    const data = response.data;
 
-    try {
-        const schedRes = await fetch(`${API_ROOT}/api/v1/schedule/games/?sportId=1&startDate=${date}&endDate=${date}&hydrate=probablePitcher,team`);
-        const schedData = await schedRes.json();
+    const gameData = data.gameData;
+    const boxscoreTeams = data.liveData.boxscore.teams;
 
-        if (!schedData.dates?.[0]) return { statusCode: 200, body: JSON.stringify([]) };
-
-        const games = await Promise.all(schedData.dates[0].games.map(async (game) => {
-            // 1. Fetch Narrative (JUST for the 1-sentence headline)
-            const contentRes = await fetch(`${API_ROOT}${game.content.link}`);
-            const content = await contentRes.json();
-            const headline = content.editorial?.recap?.mlb?.headline || content.editorial?.preview?.headline || "Game in Progress";
-
-            // 2. Fetch Live Feed (For the deep stats)
-            const liveRes = await fetch(`${API_ROOT}/api/v1.1/game/${game.gamePk}/feed/live`);
-            const live = await liveRes.json();
-
-            // Helper to extract specific stats from the boxscore
-            const parseRoster = (teamType) => {
-                const players = live.liveData?.boxscore?.teams?.[teamType]?.players || {};
-                return Object.values(players)
-                    .filter(p => p.stats.batting.atBats > 0 || p.stats.pitching.inningsPitched > "0.0")
-                    .map(p => {
-                        const b = p.stats.batting;
-                        const pi = p.stats.pitching;
-                        const isPitcher = p.position.code === '1';
-
-                        return {
-                            name: p.person.fullName,
-                            pos: p.position.abbreviation,
-                            // Batter Stats: R, H, HR, RBI, AVG
-                            ...( !isPitcher && {
-                                stats: `R:${b.runs} H:${b.hits} HR:${b.homeRuns} RBI:${b.rbi} AVG:${b.avg}`
-                            }),
-                            // Pitcher Stats: W-L, K, IP, BB, ERA, SV
-                            ...( isPitcher && {
-                                stats: `W-L:${pi.wins}-${pi.losses} K:${pi.strikeouts} IP:${pi.inningsPitched} BB:${pi.baseOnBalls} ERA:${pi.era} SV:${pi.saves}`
-                            })
-                        };
-                    });
-            };
-
-            return {
-                id: game.gamePk,
-                headline: headline, // Your "1-sentence" summary
-                venue: game.venue.name,
-                teams: {
-                    away: { 
-                        name: game.teams.away.team.name, 
-                        score: game.teams.away.score || 0,
-                        roster: parseRoster('away')
-                    },
-                    home: { 
-                        name: game.teams.home.team.name, 
-                        score: game.teams.home.score || 0,
-                        roster: parseRoster('home')
-                    }
-                }
-            };
-        }));
-
-        return {
-            statusCode: 200,
-            headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
-            body: JSON.stringify(games)
+    // Helper to extract season stats instead of single game stats
+    const extractSeasonStats = (playersObj) => {
+      return Object.values(playersObj).map(p => {
+        const stats = p.seasonStats || {};
+        const isPitcher = p.position.code === "1";
+        
+        const playerEntry = {
+          fullName: p.person.fullName,
+          jerseyNumber: p.jerseyNumber,
+          position: p.position.abbreviation,
+          type: isPitcher ? "pitcher" : "batter"
         };
-    } catch (err) {
-        return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
-    }
+
+        if (isPitcher) {
+          playerEntry.seasonStats = {
+            wins: stats.pitching?.wins,
+            losses: stats.pitching?.losses,
+            era: stats.pitching?.era,
+            inningsPitched: stats.pitching?.inningsPitched,
+            strikeOuts: stats.pitching?.strikeOuts,
+            baseOnBalls: stats.pitching?.baseOnBalls,
+            whip: stats.pitching?.whip
+          };
+        } else {
+          playerEntry.seasonStats = {
+            avg: stats.batting?.avg,
+            hits: stats.batting?.hits,
+            runs: stats.batting?.runs,
+            homeRuns: stats.batting?.homeRuns,
+            rbi: stats.batting?.rbi,
+            ops: stats.batting?.ops
+          };
+        }
+        return playerEntry;
+      }).filter(p => p.seasonStats && Object.values(p.seasonStats).some(v => v !== undefined));
+    };
+
+    const result = {
+      gameInfo: {
+        status: gameData.status.detailedState,
+        venue: gameData.venue.name,
+        gameCenterLink: `https://www.mlb.com/gameday/${data.gamePk}`,
+        probables: {
+          away: gameData.probables?.away?.fullName || "TBD",
+          home: gameData.probables?.home?.fullName || "TBD"
+        }
+      },
+      teams: {
+        away: {
+          name: gameData.teams.away.name,
+          record: `${gameData.teams.away.record.wins}-${gameData.teams.away.record.losses}`,
+          players: extractSeasonStats(boxscoreTeams.away.players)
+        },
+        home: {
+          name: gameData.teams.home.name,
+          record: `${gameData.teams.home.record.wins}-${gameData.teams.home.record.losses}`,
+          players: extractSeasonStats(boxscoreTeams.home.players)
+        }
+      }
+    };
+
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(result)
+    };
+  } catch (error) {
+    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+  }
 };
