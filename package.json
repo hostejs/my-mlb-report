@@ -1,7 +1,9 @@
 {
   "name": "mlb-scout-bouncer",
   "version": "1.0.0",
+  "description": "MLB Game Data Scraper",
+  "main": "get-mlb.js",
   "dependencies": {
-    "node-fetch": "^2.6.7"
+    "axios": "^1.6.0"
   }
 }
