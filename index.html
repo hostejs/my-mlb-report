@@ -99,38 +99,50 @@
                 let buffer = `MLB SCOUT REPORT: ${date}\n==============================\n`;
 
                 games.forEach(game => {
-                    buffer += `\n[GAME]: ${game.headline}\n`;
-                    game.teams.away.roster.forEach(p => buffer += `  - ${p.name} (${p.pos}): ${p.stats}\n`);
-                    game.teams.home.roster.forEach(p => buffer += `  - ${p.name} (${p.pos}): ${p.stats}\n`);
-                    buffer += `------------------------------\n`;
+    // 1. SAFE STATUS CHECK: Default to empty string if status is missing
+    const currentStatus = game.status || ""; 
+    const isFinished = currentStatus.includes("Final") || currentStatus.includes("Progress");
 
-                    const card = document.createElement('div');
-                    card.className = "bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-xl loading-active";
-                    
-                    const isFinished = game.status.includes("Final") || game.status.includes("Progress");
+    // 2. SAFE ROSTER CHECK: Ensure rosters exist before mapping
+    const awayRoster = (game.teams?.away?.roster || []);
+    const homeRoster = (game.teams?.home?.roster || []);
 
-                    card.innerHTML = `
-                        <div class="bg-slate-950 px-4 py-2 border-b border-slate-800 flex justify-between">
-                            <span class="text-[9px] font-black text-sky-500 uppercase">${game.status}</span>
-                            <span class="text-[9px] font-bold text-slate-500 truncate ml-4">${game.venue}</span>
-                        </div>
-                        <div class="p-5 flex-grow">
-                            <div class="flex justify-between items-center mb-6 text-white text-center">
-                                <div class="w-5/12"><p class="text-xs font-black">${game.teams.away.name}</p><p class="text-4xl font-black">${game.teams.away.score}</p></div>
-                                <div class="text-slate-700 italic text-sm font-black">VS</div>
-                                <div class="w-5/12"><p class="text-xs font-black">${game.teams.home.name}</p><p class="text-4xl font-black">${game.teams.home.score}</p></div>
-                            </div>
-                            ${isFinished ? `
-                                <div class="stat-scroll flex gap-2 overflow-x-auto pb-2 border-t border-slate-800 pt-3">
-                                    ${game.teams.away.roster.slice(0, 3).map(p => `<div class="flex-shrink-0 bg-slate-800 p-2 rounded text-[8px] border border-slate-700"><p class="font-bold text-sky-400">${p.name}</p><p class="text-slate-500">${p.stats}</p></div>`).join('')}
-                                    ${game.teams.home.roster.slice(0, 3).map(p => `<div class="flex-shrink-0 bg-slate-800 p-2 rounded text-[8px] border border-slate-700"><p class="font-bold text-white">${p.name}</p><p class="text-slate-500">${p.stats}</p></div>`).join('')}
-                                </div>
-                            ` : `<p class="text-[10px] text-slate-500 italic border-t border-slate-800 pt-3 text-center">${game.headline}</p>`}
-                        </div>
-                        <a href="https://www.mlb.com/gameday/${game.id}" target="_blank" class="block w-full bg-slate-950 text-sky-500 text-center py-3 text-[9px] font-black uppercase hover:bg-sky-600 hover:text-white">Gameday</a>
-                    `;
-                    container.appendChild(card);
-                });
+    buffer += `\n[GAME]: ${game.headline || 'Unknown Game'}\n`;
+    awayRoster.forEach(p => buffer += `  - ${p.name} (${p.pos}): ${p.stats}\n`);
+    homeRoster.forEach(p => buffer += `  - ${p.name} (${p.pos}): ${p.stats}\n`);
+    buffer += `------------------------------\n`;
+
+    const card = document.createElement('div');
+    card.className = "bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-xl";
+    
+    card.innerHTML = `
+        <div class="bg-slate-950 px-4 py-2 border-b border-slate-800 flex justify-between">
+            <span class="text-[9px] font-black text-sky-500 uppercase">${currentStatus}</span>
+            <span class="text-[9px] font-bold text-slate-500 truncate ml-4">${game.venue || 'TBD'}</span>
+        </div>
+        <div class="p-5 flex-grow">
+            <div class="flex justify-between items-center mb-6 text-white text-center">
+                <div class="w-5/12">
+                    <p class="text-xs font-black">${game.teams?.away?.name || 'Away'}</p>
+                    <p class="text-4xl font-black">${game.teams?.away?.score ?? 0}</p>
+                </div>
+                <div class="text-slate-700 italic text-sm font-black">VS</div>
+                <div class="w-5/12">
+                    <p class="text-xs font-black">${game.teams?.home?.name || 'Home'}</p>
+                    <p class="text-4xl font-black">${game.teams?.home?.score ?? 0}</p>
+                </div>
+            </div>
+            ${isFinished && (awayRoster.length > 0 || homeRoster.length > 0) ? `
+                <div class="stat-scroll flex gap-2 overflow-x-auto pb-2 border-t border-slate-800 pt-3">
+                    ${awayRoster.slice(0, 3).map(p => `<div class="flex-shrink-0 bg-slate-800 p-2 rounded text-[8px] border border-slate-700"><p class="font-bold text-sky-400">${p.name}</p><p class="text-slate-500">${p.stats}</p></div>`).join('')}
+                    ${homeRoster.slice(0, 3).map(p => `<div class="flex-shrink-0 bg-slate-800 p-2 rounded text-[8px] border border-slate-700"><p class="font-bold text-white">${p.name}</p><p class="text-slate-500">${p.stats}</p></div>`).join('')}
+                </div>
+            ` : `<p class="text-[10px] text-slate-500 italic border-t border-slate-800 pt-3 text-center">${game.headline || 'No summary available'}</p>`}
+        </div>
+        <a href="https://www.mlb.com/gameday/${game.id}" target="_blank" class="block w-full bg-slate-950 text-sky-500 text-center py-3 text-[9px] font-black uppercase hover:bg-sky-600 hover:text-white">Gameday</a>
+    `;
+    container.appendChild(card);
+});
 
                 rawText.value = buffer;
                 document.getElementById('rawDumpSection').classList.remove('hidden');
