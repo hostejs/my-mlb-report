@@ -2,9 +2,7 @@ const axios = require('axios');
 
 exports.handler = async (event) => {
   try {
-    // Get date from query string (YYYY-MM-DD) or default to today
     const selectedDate = event.queryStringParameters.date || new Date().toISOString().split('T')[0];
-    
     const scheduleUrl = `https://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&date=${selectedDate}`;
     const scheduleRes = await axios.get(scheduleUrl);
     const games = scheduleRes.data.dates[0]?.games || [];
@@ -14,52 +12,49 @@ exports.handler = async (event) => {
         const liveRes = await axios.get(`https://statsapi.mlb.com/api/v1.1/game/${game.gamePk}/feed/live`);
         const liveData = liveRes.data;
         const box = liveData.liveData.boxscore.teams;
+        const decisions = liveData.liveData.decisions || {};
 
-        const pullStats = (players) => Object.values(players).map(p => {
-            const isP = p.position.code === "1";
-            const s = p.seasonStats || {};
-            return {
-                name: p.person.fullName,
-                pos: p.position.abbreviation,
-                isPitcher: isP,
-                displayStat: isP ? `ERA: ${s.pitching?.era || '-.--'}` : `AVG: ${s.batting?.avg || '.000'}`,
-                // Full stats for the AI Dump
-                raw: s 
-            };
-        });
-
-        // Helper to get Pitcher Name + Season Record
-        const getPitcherInfo = (type, side) => {
-            const person = liveData.gameData.probables?.[side];
-            if (!person) return "TBD";
-            // Attempt to find the pitcher in the boxscore to get their season W-L
-            const playerObj = Object.values(box[side].players).find(p => p.person.id === person.id);
-            const record = playerObj?.seasonStats?.pitching ? 
-                `(${playerObj.seasonStats.pitching.wins}-${playerObj.seasonStats.pitching.losses}, ${playerObj.seasonStats.pitching.era})` : "";
-            return `${person.fullName} ${record}`;
+        // Helper to get specific pitcher details for Win/Loss/Save
+        const getDecisionPitcher = (id) => {
+            if (!id) return null;
+            // Search through both teams for the player
+            const allPlayers = { ...box.away.players, ...box.home.players };
+            const p = allPlayers[`ID${id}`];
+            if (!p) return "Unknown";
+            const s = p.seasonStats?.pitching || {};
+            return `${p.person.fullName} (${s.wins || 0}-${s.losses || 0}, ${s.era || '-.--'})`;
         };
 
         return {
           gamePk: game.gamePk,
           venue: liveData.gameData.venue.name,
           status: liveData.gameData.status.detailedState,
+          scores: {
+            away: liveData.liveData.linescore.teams.away.runs || 0,
+            home: liveData.liveData.linescore.teams.home.runs || 0
+          },
           teams: {
             away: {
               name: liveData.gameData.teams.away.name,
               record: liveData.gameData.teams.away.record ? `${liveData.gameData.teams.away.record.wins}-${liveData.gameData.teams.away.record.losses}` : "0-0",
-              probable: getPitcherInfo('probable', 'away'),
-              players: pullStats(box.away.players)
+              decisionPitcher: getDecisionPitcher(decisions.winner?.id === liveData.gameData.teams.away.id ? decisions.winner.id : (decisions.loser?.id === liveData.gameData.teams.away.id ? decisions.loser.id : null)),
+              isWinner: decisions.winner?.id === liveData.gameData.teams.away.id,
+              isLoser: decisions.loser?.id === liveData.gameData.teams.away.id,
+              save: decisions.save?.id && Object.keys(box.away.players).includes(`ID${decisions.save.id}`) ? getDecisionPitcher(decisions.save.id) : null
             },
             home: {
               name: liveData.gameData.teams.home.name,
               record: liveData.gameData.teams.home.record ? `${liveData.gameData.teams.home.record.wins}-${liveData.gameData.teams.home.record.losses}` : "0-0",
-              probable: getPitcherInfo('probable', 'home'),
-              players: pullStats(box.home.players)
+              decisionPitcher: getDecisionPitcher(decisions.winner?.id === liveData.gameData.teams.home.id ? decisions.winner.id : (decisions.loser?.id === liveData.gameData.teams.home.id ? decisions.loser.id : null)),
+              isWinner: decisions.winner?.id === liveData.gameData.teams.home.id,
+              isLoser: decisions.loser?.id === liveData.gameData.teams.home.id,
+              save: decisions.save?.id && Object.keys(box.home.players).includes(`ID${decisions.save.id}`) ? getDecisionPitcher(decisions.save.id) : null
             }
           },
-          decisions: liveData.liveData.decisions || {}
+          // Keep raw for the diagnostic textarea
+          raw: liveData 
         };
-      } catch (e) { return null; } // Skip broken game feeds
+      } catch (e) { return null; }
     }));
 
     return { 
