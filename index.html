@@ -3,94 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLB Scout | AI Bouncer</title>
+    <title>MLB Scout | Pro Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-950 text-slate-200 p-4 lg:p-8">
+<body class="bg-slate-950 text-slate-200 p-4">
 
     <div class="max-w-7xl mx-auto">
-        <header class="flex justify-between items-end mb-8 border-b border-slate-800 pb-4">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-slate-800 pb-6 gap-4">
             <div>
                 <h1 class="text-3xl font-black italic text-white tracking-tighter">MLB<span class="text-sky-500">SCOUT</span></h1>
-                <p class="text-xs text-slate-500 font-mono">Status: Consolidated Feed Active</p>
+                <p class="text-[10px] text-slate-500 font-mono">Real-time Scouting & AI Data Dump</p>
             </div>
-            <button onclick="copyDump()" class="bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-bold px-4 py-2 rounded uppercase transition">Copy AI Data Dump</button>
+            
+            <div class="flex items-center gap-3">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Select Date:</label>
+                <input type="date" id="date-picker" 
+                       class="bg-slate-900 border border-slate-700 rounded px-3 py-1 text-sm text-sky-400 focus:outline-none focus:border-sky-500">
+                <button onclick="copyDump()" class="bg-slate-800 hover:bg-slate-700 text-[10px] font-bold px-4 py-2 rounded uppercase border border-slate-700">Copy AI Dump</button>
+            </div>
         </header>
 
         <div id="game-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            <div class="col-span-full text-center py-12 animate-pulse text-slate-500">Initializing scouting reports...</div>
-        </div>
+            </div>
 
         <div class="border-t border-slate-800 pt-8">
-            <h2 class="text-sm font-bold text-slate-400 mb-4 uppercase tracking-widest text-center">Raw AI Data String</h2>
-            <textarea id="ai-dump" readonly class="w-full h-48 bg-slate-900 border border-slate-800 rounded-lg p-4 font-mono text-[10px] text-sky-400 focus:outline-none focus:border-sky-500" placeholder="Waiting for data..."></textarea>
+            <h2 class="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Raw AI Data (Compressed)</h2>
+            <textarea id="ai-dump" readonly class="w-full h-40 bg-slate-900/50 border border-slate-800 rounded-lg p-4 font-mono text-[10px] text-sky-600 focus:outline-none"></textarea>
         </div>
     </div>
 
     <script>
-        async function load() {
+        // Set default date to today in the picker
+        const picker = document.getElementById('date-picker');
+        picker.value = new Date().toISOString().split('T')[0];
+
+        async function load(date = '') {
             const grid = document.getElementById('game-grid');
             const dump = document.getElementById('ai-dump');
+            grid.innerHTML = `<div class="col-span-full text-center py-20 text-slate-600 animate-pulse font-mono">FETCHING REMOTE DATA FOR ${date || 'TODAY'}...</div>`;
 
             try {
-                const res = await fetch('/.netlify/functions/get-mlb');
+                const res = await fetch(`/.netlify/functions/get-mlb?date=${date}`);
                 const data = await res.json();
-                
-                // 1. Fill the AI Dump immediately
                 dump.value = JSON.stringify(data);
 
-                // 2. Build the visual cards
+                if (data.length === 0) {
+                    grid.innerHTML = `<div class="col-span-full text-center py-20 text-slate-500">No games found for this date.</div>`;
+                    return;
+                }
+
                 grid.innerHTML = data.map(game => {
                     const isFinal = game.status.includes("Final");
                     
-                    // Filter for "Good Players" to show in UI (Top 4 based on AVG or ERA)
-                    const getTop = (players) => players
-                        .filter(p => (p.stats.avg && parseFloat(p.stats.avg) > .270) || (p.stats.era && parseFloat(p.stats.era) < 4.00))
-                        .slice(0, 4);
-
-                    const awayStars = getTop(game.teams.away.players);
-                    const homeStars = getTop(game.teams.home.players);
+                    // Logic for "Top Players" - brief for UI
+                    const allPlayers = [...game.teams.away.players, ...game.teams.home.players];
+                    const highlights = allPlayers
+                        .filter(p => (p.isPitcher && parseFloat(p.displayStat.split(' ')[1]) < 3.50) || (!p.isPitcher && parseFloat(p.displayStat.split(' ')[1]) > .280))
+                        .slice(0, 6);
 
                     return `
-                        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex flex-col">
-                            <div class="bg-slate-800/50 px-4 py-2 flex justify-between items-center text-[10px] font-bold">
-                                <span class="text-slate-400 truncate">${game.venue}</span>
-                                <span class="${isFinal ? 'text-red-500' : 'text-emerald-400'}">${game.status}</span>
+                        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-lg">
+                            <div class="bg-slate-800/40 px-4 py-2 flex justify-between text-[10px] font-bold tracking-tight border-b border-slate-800/50">
+                                <span class="text-slate-400 uppercase">${game.venue}</span>
+                                <span class="${isFinal ? 'text-rose-500' : 'text-sky-400'}">${game.status.toUpperCase()}</span>
                             </div>
 
                             <div class="p-5 flex-grow">
-                                <div class="flex justify-between items-center mb-6">
+                                <div class="flex justify-between items-center mb-4">
                                     <div class="text-center w-5/12">
-                                        <div class="text-xl font-black">${game.teams.away.name.split(' ').pop()}</div>
-                                        <div class="text-[10px] text-slate-500 font-bold">${game.teams.away.record}</div>
+                                        <div class="text-xl font-black text-white">${game.teams.away.name.split(' ').pop()}</div>
+                                        <div class="text-[10px] text-slate-500">${game.teams.away.record}</div>
                                     </div>
-                                    <div class="text-slate-700 font-black italic tracking-tighter">VS</div>
+                                    <div class="text-slate-800 font-black italic">VS</div>
                                     <div class="text-center w-5/12">
-                                        <div class="text-xl font-black">${game.teams.home.name.split(' ').pop()}</div>
-                                        <div class="text-[10px] text-slate-500 font-bold">${game.teams.home.record}</div>
+                                        <div class="text-xl font-black text-white">${game.teams.home.name.split(' ').pop()}</div>
+                                        <div class="text-[10px] text-slate-500">${game.teams.home.record}</div>
                                     </div>
                                 </div>
 
-                                <div class="bg-black/40 p-3 rounded-lg border border-slate-800 mb-4">
-                                    <p class="text-[9px] uppercase text-slate-500 font-bold mb-2 tracking-widest">Starting / Decisions</p>
-                                    <div class="grid grid-cols-2 gap-4 text-xs">
-                                        <div class="border-l border-sky-500 pl-2">
-                                            <div class="text-slate-400 text-[10px]">Away</div>
-                                            <div class="font-bold truncate">${isFinal && game.decisions.winner ? 'W: ' + game.decisions.winner.fullName : game.teams.away.probable}</div>
-                                        </div>
-                                        <div class="border-l border-orange-500 pl-2">
-                                            <div class="text-slate-400 text-[10px]">Home</div>
-                                            <div class="font-bold truncate">${isFinal && game.decisions.loser ? 'L: ' + game.decisions.loser.fullName : game.teams.home.probable}</div>
-                                        </div>
-                                    </div>
+                                <div class="bg-black/20 rounded p-3 mb-4 text-[11px] border border-slate-800/50">
+                                    <div class="mb-1"><span class="text-slate-500 uppercase font-bold text-[9px]">Away:</span> <span class="text-slate-200">${game.teams.away.probable}</span></div>
+                                    <div><span class="text-slate-500 uppercase font-bold text-[9px]">Home:</span> <span class="text-slate-200">${game.teams.home.probable}</span></div>
                                 </div>
 
                                 <div class="space-y-1">
-                                    <p class="text-[9px] uppercase text-sky-500 font-bold mb-2 tracking-widest">Scouting Highlights</p>
-                                    ${[...awayStars, ...homeStars].map(p => `
-                                        <div class="flex justify-between text-[11px] bg-slate-800/20 px-2 py-1 rounded">
-                                            <span class="text-slate-300 font-medium"><span class="text-slate-600 mr-1">${p.pos}</span>${p.name}</span>
-                                            <span class="font-mono text-sky-400">${p.stats.avg || p.stats.era}</span>
+                                    ${highlights.map(p => `
+                                        <div class="flex justify-between text-[10px] bg-slate-800/20 px-2 py-1 rounded border border-slate-800/30">
+                                            <span class="text-slate-400"><b class="text-slate-500 mr-1">${p.pos}</b> ${p.name}</span>
+                                            <span class="font-mono text-sky-500 font-bold">${p.displayStat}</span>
                                         </div>
                                     `).join('')}
                                 </div>
@@ -98,20 +98,23 @@
                         </div>
                     `;
                 }).join('');
-
             } catch (err) {
-                grid.innerHTML = `<div class="col-span-full text-red-500 text-center">Error fetching feed. Check Netlify Logs.</div>`;
+                grid.innerHTML = `<div class="col-span-full text-red-500 text-center">Fetch Error. Check console.</div>`;
             }
         }
+
+        // Event listener for date change
+        picker.addEventListener('change', (e) => load(e.target.value));
 
         function copyDump() {
             const textarea = document.getElementById('ai-dump');
             textarea.select();
             document.execCommand('copy');
-            alert('Data dump copied to clipboard!');
+            alert('Data copied for AI analysis.');
         }
 
-        load();
+        // Initial load
+        load(picker.value);
     </script>
 </body>
 </html>
