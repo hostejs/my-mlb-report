@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLB Daily Scout | Netlify Powered</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print { .no-print, #rawDumpSection { display: none; } }
+        .game-card { break-inside: avoid; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans">
+
+    <header class="bg-slate-900 text-white p-6 shadow-xl no-print">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-xl font-black italic tracking-tighter">MLB<span class="text-sky-400">DATA</span>SCOUT</h1>
+                <p class="text-[10px] text-slate-400 font-mono">Netlify Serverless Edition</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                <input type="date" id="datePicker" class="text-slate-900 p-2 rounded font-bold text-sm outline-none border-none">
+                <button onclick="fetchGames()" class="bg-sky-500 hover:bg-sky-600 px-6 py-2 rounded-full font-bold transition transform active:scale-95 shadow-lg">Process Date</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-4 md:p-8">
+        <div id="status" class="hidden mb-6 p-4 rounded-lg bg-sky-100 text-sky-800 text-center animate-pulse font-bold border border-sky-200">
+            Connecting to Netlify Bouncer...
+        </div>
+
+        <section id="rawDumpSection" class="hidden mb-12">
+            <div class="flex justify-between items-end mb-2">
+                <h2 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">AI Analysis Buffer (Raw Data)</h2>
+                <button onclick="copyRaw()" class="text-xs font-bold text-sky-600 hover:text-sky-800 uppercase tracking-tighter">Copy for AI Processing →</button>
+            </div>
+            <textarea id="rawTextArea" class="w-full h-56 p-4 text-[11px] font-mono bg-slate-800 text-slate-300 rounded-xl border-none focus:ring-2 focus:ring-sky-500 shadow-inner" readonly></textarea>
+        </section>
+
+        <h2 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">Daily Game Board</h2>
+        <div id="gamesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
+    </main>
+
+    <script>
+        // Set default date to yesterday
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        document.getElementById('datePicker').value = d.toISOString().split('T')[0];
+
+        function copyRaw() {
+            const el = document.getElementById('rawTextArea');
+            el.select();
+            document.execCommand('copy');
+            alert("Buffer Copied to Clipboard!");
+        }
+
+        async function fetchGames() {
+            const date = document.getElementById('datePicker').value;
+            const status = document.getElementById('status');
+            const container = document.getElementById('gamesContainer');
+            const rawText = document.getElementById('rawTextArea');
+            const dumpSection = document.getElementById('rawDumpSection');
+
+            // --- CONFIGURATION ---
+            // Replace this with your actual Netlify URL
+            const NETLIFY_URL = "https://my-mlb-report.netlify.app"; 
+            
+            status.classList.remove('hidden');
+            container.innerHTML = '';
+            dumpSection.classList.add('hidden');
+
+            try {
+                // Call the Netlify serverless function
+                const response = await fetch(`${NETLIFY_URL}/.netlify/functions/get-mlb?date=${date}`);
+                const games = await response.json();
+
+                if (!games || games.length === 0) {
+                    status.innerText = "No games found for this date. Season might not be active.";
+                    status.classList.remove('animate-pulse');
+                    return;
+                }
+
+                let buffer = `MLB SCOUT REPORT: ${date}\n==============================\n`;
+
+                games.forEach(game => {
+                    // 1. Build the AI Data Buffer (Deep Narrative from content.json spec)
+                    buffer += `\n[GAME]: ${game.headline || (game.teams.away.name + ' @ ' + game.teams.home.name)}\n`;
+                    buffer += `[STATUS]: ${game.status}\n`;
+                    buffer += `[SCORE]: ${game.teams.away.name} ${game.teams.away.score} - ${game.teams.home.name} ${game.teams.home.score}\n`;
+                    buffer += `[PITCHERS]: ${game.teams.away.pitcher} vs ${game.teams.home.pitcher}\n`;
+                    buffer += `[NARRATIVE]: ${game.narrative}\n`;
+                    buffer += `------------------------------\n`;
+
+                    // 2. Build the Visual Card
+                    const card = document.createElement('div');
+                    card.className = "game-card bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col";
+                    card.innerHTML = `
+                        <div class="bg-slate-50 p-3 border-b border-slate-100 flex justify-between items-center text-[9px] font-black text-slate-400 uppercase tracking-tighter">
+                            <span>${game.status}</span>
+                            <span>${game.venue || 'MLB Ballpark'}</span>
+                        </div>
+                        <div class="p-6 flex-grow">
+                            <div class="flex justify-between items-center mb-6">
+                                <div class="text-center w-5/12">
+                                    <p class="text-[10px] font-bold text-slate-500 mb-1 truncate">${game.teams.away.name}</p>
+                                    <p class="text-4xl font-black tracking-tighter">${game.teams.away.score}</p>
+                                </div>
+                                <div class="text-slate-200 font-black italic text-xl">VS</div>
+                                <div class="text-center w-5/12">
+                                    <p class="text-[10px] font-bold text-slate-500 mb-1 truncate">${game.teams.home.name}</p>
+                                    <p class="text-4xl font-black tracking-tighter">${game.teams.home.score}</p>
+                                </div>
+                            </div>
+                            <div class="space-y-2 border-t pt-4">
+                                <div class="flex items-start gap-2">
+                                    <span class="bg-slate-100 text-[9px] font-bold px-1.5 py-0.5 rounded text-slate-500">P</span>
+                                    <p class="text-[10px] font-medium text-slate-600">${game.teams.away.pitcher} <span class="text-slate-300">/</span> ${game.teams.home.pitcher}</p>
+                                </div>
+                                <p class="text-[11px] text-slate-500 leading-tight line-clamp-3 italic">"${game.headline}"</p>
+                            </div>
+                        </div>
+                        <a href="https://www.mlb.com/gameday/${game.id}" target="_blank" class="block w-full bg-slate-900 text-white text-center py-2.5 text-[10px] font-bold hover:bg-sky-600 transition no-print">OPEN GAMEDAY</a>
+                    `;
+                    container.appendChild(card);
+                });
+
+                // Update the textarea and show it
+                rawText.value = buffer;
+                dumpSection.classList.remove('hidden');
+                status.classList.add('hidden');
+
+            } catch (err) {
+                console.error(err);
+                status.innerText = "Error: Site unreachable. Check your Netlify deployment and site name.";
+                status.classList.remove('animate-pulse');
+            }
+        }
+    </script>
+</body>
+</html>
