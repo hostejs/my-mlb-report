@@ -8,12 +8,9 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
 
         :root {
-            --panel-bg: rgba(18, 20, 38, 0.9);
+            --panel-bg: rgba(34, 211, 238, 0.3);
             --page-bg: #daecee;
             --accent: #22d3ee;
-            /* This is the "Active" glow style you wanted everywhere */
-            --glow-bg: rgba(34, 211, 238, 0.15);
-            --border-glow: #22d3ee;
             --text-light: #ffffff;
             --text-muted: #94a3b8;
         }
@@ -29,61 +26,47 @@
 
         .container { max-width: 1100px; margin: 0 auto; }
 
-        /* THE "ACTIVE" STYLE APPLIED TO ALL PANELS BY DEFAULT */
         .panel {
-            background-color: var(--panel-bg);
+            background: var(--panel-bg);
             backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
-            border: 2px solid var(--border-glow); /* Stronger teal border */
-            background-image: linear-gradient(to bottom right, var(--glow-bg), transparent);
+            border: 1px solid var(--accent);
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 25px;
-            box-shadow: 0 0 20px rgba(34, 211, 238, 0.2);
         }
 
         .team-buttons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
         .team {
             background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border-glow);
+            border: 1px solid var(--accent);
             color: var(--text-light);
             padding: 8px 12px;
             font-size: 11px;
             border-radius: 4px;
             cursor: pointer;
-            transition: 0.2s;
         }
-        .team.active { background-color: var(--accent); color: #121426; box-shadow: 0 0 10px var(--accent); }
-
-        /* Rows also get the glow style */
-        .row-item {
-            padding: 12px;
-            margin-bottom: 8px;
-            border: 1px solid var(--border-glow);
-            background: var(--glow-bg);
-            border-radius: 6px;
-            font-size: 0.85rem;
-        }
+        .team.active { background-color: var(--accent); color: #121426; }
 
         .section-header { 
-            color: var(--accent); 
+            color: var(--text-light); 
             margin: 10px 0 15px 0; 
             font-size: 1.2rem; 
-            text-shadow: 0 0 8px var(--accent);
         }
 
         .player-line {
-            padding: 10px;
-            border-bottom: 1px solid var(--border-glow);
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
             font-size: 0.75rem;
             line-height: 1.6;
         }
-        .highlight { color: #fff; background: rgba(34, 211, 238, 0.3); border-left: 5px solid #fff; }
+        
+        /* Just bold, no glow/color */
+        .highlight { font-weight: bold; color: #fff; }
 
         .stat-label { color: var(--accent); font-weight: bold; margin-right: 3px; }
         .stat-val { color: #fff; margin-right: 10px; }
 
-        /* Diagnostic Log */
         #diagLog {
             font-family: monospace;
             font-size: 10px;
@@ -93,7 +76,6 @@
             overflow-y: auto;
             padding: 10px;
             text-transform: none;
-            border: 1px solid #333;
         }
     </style>
 </head>
@@ -105,18 +87,18 @@
     </div>
 
     <div class="panel">
-        <div class="section-header">☁️ Schedule (Targeting Most Recent/Upcoming)</div>
+        <div class="section-header">Schedule</div>
         <div id="gamesList"></div>
     </div>
 
     <div class="panel">
-        <div class="section-header">☁️ Team Roster & Season Statistics</div>
+        <div class="section-header">Team Roster & Statistics</div>
         <div id="playersList"></div>
     </div>
 
     <div class="panel">
-        <div class="section-header" style="font-size: 0.8rem;">Diagnostic Data Request Log</div>
-        <div id="diagLog">INITIALIZING SYSTEM...</div>
+        <div class="section-header" style="font-size: 0.8rem;">Log</div>
+        <div id="diagLog">SYSTEM READY...</div>
     </div>
 </div>
 
@@ -141,6 +123,12 @@
         "Tor": { name: "Blue Jays", id: 141 }, "Was": { name: "Nationals", id: 120 }
     };
 
+    const posMap = {
+        "Pitcher": "P", "Catcher": "C", "First Base": "1B", "Second Base": "2B",
+        "Third Base": "3B", "Shortstop": "SS", "Outfielder": "OF", "Left Field": "LF",
+        "Center Field": "CF", "Right Field": "RF", "Designated Hitter": "DH"
+    };
+
     const log = (msg) => {
         const el = document.getElementById('diagLog');
         el.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`;
@@ -150,15 +138,11 @@
     let scheduleData = null;
 
     async function init() {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const end = tomorrow.toISOString().split('T')[0];
         const start = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const end = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         
-        log(`Requesting schedule range: ${start} to ${end}`);
         const resp = await fetch(`/.netlify/functions/get-schedule?startDate=${start}&endDate=${end}`);
         scheduleData = await resp.json();
-        log(`Schedule received. Total dates: ${scheduleData.dates?.length || 0}`);
 
         setupButtons();
         loadTeamFlow("ARI");
@@ -191,44 +175,32 @@
 
         filtered.forEach(g => {
             const div = document.createElement('div');
-            div.className = "row-item";
+            div.style.padding = "10px 0";
             const d = new Date(g.gameDate).toLocaleDateString();
-            div.innerText = `${d} ${g.teams.away.team.name} ${g.teams.away.score || 0} @ ${g.teams.home.team.name} ${g.teams.home.score || 0}`;
+            div.innerText = `${d} | ${g.teams.away.team.name} ${g.teams.away.score || 0} @ ${g.teams.home.team.name} ${g.teams.home.score || 0}`;
             list.appendChild(div);
         });
 
         if (filtered.length > 0) {
-            log(`Auto-loading Details for gamePk: ${filtered[0].gamePk}`);
             fetchDetails(filtered[0].gamePk, teamCode);
-        } else {
-            log(`No games found for ${teamCode} in cache.`);
-            document.getElementById('playersList').innerHTML = "No recent roster data.";
         }
     }
 
     async function fetchDetails(gamePk, teamCode) {
         const teamId = teamMap[teamCode].id;
-        const url = `/.netlify/functions/get-game-details?gamePk=${gamePk}&teamId=${teamId}`;
-        log(`Calling Details: ${url}`);
-        
         try {
-            const resp = await fetch(url);
+            const resp = await fetch(`/.netlify/functions/get-game-details?gamePk=${gamePk}&teamId=${teamId}`);
             const data = await resp.json();
-            log(`Received ${data.players?.length || 0} players for ${data.teamName}`);
             renderRoster(data.players, teamCode);
-        } catch (e) {
-            log(`Error: ${e.message}`);
-        }
+        } catch (e) { log(`Error: ${e.message}`); }
     }
 
     function renderRoster(players, teamCode) {
         const list = document.getElementById('playersList');
         list.innerHTML = "";
 
-        // Sort: Pitchers (GS first), then Batters
         const sorted = [...players].sort((a, b) => {
             if (!!a.pitching !== !!b.pitching) return a.pitching ? -1 : 1;
-            if (a.pitching && b.pitching) return (b.pitching.gamesStarted || 0) - (a.pitching.gamesStarted || 0);
             return a.fullName.localeCompare(b.fullName);
         });
 
@@ -237,27 +209,18 @@
             const div = document.createElement('div');
             div.className = `player-line ${isH ? 'highlight' : ''}`;
             
+            const displayPos = posMap[p.position] || p.position.charAt(0);
             let sHtml = "";
+
             if (p.pitching) {
                 const s = p.pitching;
-                sHtml = `<span class="stat-label">W-L:</span><span class="stat-val">${s.wins}-${s.losses}</span>
-                         <span class="stat-label">G:</span><span class="stat-val">${s.games}</span>
-                         <span class="stat-label">GS:</span><span class="stat-val">${s.gamesStarted}</span>
-                         <span class="stat-label">IP:</span><span class="stat-val">${s.inningsPitched}</span>
-                         <span class="stat-label">ERA:</span><span class="stat-val">${s.era}</span>
-                         <span class="stat-label">K/9:</span><span class="stat-val">${s.k9}</span>
-                         <span class="stat-label">CG:</span><span class="stat-val">${s.completeGames}</span>
-                         <span class="stat-label">SV:</span><span class="stat-val">${s.saves}</span>`;
+                sHtml = `<span class="stat-label">ERA:</span><span class="stat-val">${s.era}</span> <span class="stat-label">K/9:</span><span class="stat-val">${s.k9}</span>`;
             } else {
                 const s = p.batting;
-                sHtml = `<span class="stat-label">AVG:</span><span class="stat-val">${s.avg}</span>
-                         <span class="stat-label">HR:</span><span class="stat-val">${s.homeruns}</span>
-                         <span class="stat-label">RBI:</span><span class="stat-val">${s.rbi}</span>
-                         <span class="stat-label">H:</span><span class="stat-val">${s.hits}</span>`;
+                sHtml = `<span class="stat-label">AVG:</span><span class="stat-val">${s.avg}</span> <span class="stat-label">HR:</span><span class="stat-val">${s.homeruns}</span>`;
             }
 
-            div.innerHTML = `#${p.jerseyNumber} ${p.position.charAt(0)} ${p.fullName} ${sHtml} 
-                             <i style="text-transform:none; font-size:10px; color:var(--accent)">${p.summary || ''} ${p.note || ''}</i>`;
+            div.innerHTML = `#${p.jerseyNumber || '??'} ${displayPos} | ${p.fullName} ${sHtml}`;
             list.appendChild(div);
         });
     }
