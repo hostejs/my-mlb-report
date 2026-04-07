@@ -8,7 +8,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
 
         :root {
-            --panel-bg: rgba(18, 20, 38, 0.9);
+            --panel-bg: rgba(34, 211, 238, 0.15);
             --page-bg: #daecee;
             --accent: #22d3ee;
             --text-light: #ffffff;
@@ -199,8 +199,10 @@
         const list = document.getElementById('playersList');
         list.innerHTML = "";
 
+        // Sort: Pitchers (GS first), then Batters
         const sorted = [...players].sort((a, b) => {
             if (!!a.pitching !== !!b.pitching) return a.pitching ? -1 : 1;
+            if (a.pitching && b.pitching) return (b.pitching.gamesStarted || 0) - (a.pitching.gamesStarted || 0);
             return a.fullName.localeCompare(b.fullName);
         });
 
@@ -209,23 +211,33 @@
             const div = document.createElement('div');
             div.className = `player-line ${isH ? 'highlight' : ''}`;
             
-            const displayPos = posMap[p.position] || p.position.charAt(0);
             let sHtml = "";
-
             if (p.pitching) {
                 const s = p.pitching;
-                sHtml = `<span class="stat-label">ERA:</span><span class="stat-val">${s.era}</span> <span class="stat-label">K/9:</span><span class="stat-val">${s.k9}</span>`;
+                sHtml = `<span class="stat-label">W-L:</span><span class="stat-val">${s.wins}-${s.losses}</span>
+                         <span class="stat-label">G:</span><span class="stat-val">${s.games}</span>
+                         <span class="stat-label">GS:</span><span class="stat-val">${s.gamesStarted}</span>
+                         <span class="stat-label">IP:</span><span class="stat-val">${s.inningsPitched}</span>
+                         <span class="stat-label">ERA:</span><span class="stat-val">${s.era}</span>
+                         <span class="stat-label">K/9:</span><span class="stat-val">${s.k9}</span>
+                         <span class="stat-label">CG:</span><span class="stat-val">${s.completeGames}</span>
+                         <span class="stat-label">SV:</span><span class="stat-val">${s.saves}</span>`;
             } else {
                 const s = p.batting;
-                sHtml = `<span class="stat-label">AVG:</span><span class="stat-val">${s.avg}</span> <span class="stat-label">HR:</span><span class="stat-val">${s.homeruns}</span>`;
+                sHtml = `<span class="stat-label">AVG:</span><span class="stat-val">${s.avg}</span>
+                         <span class="stat-label">HR:</span><span class="stat-val">${s.homeruns}</span>
+                         <span class="stat-label">RBI:</span><span class="stat-val">${s.rbi}</span>
+                         <span class="stat-label">H:</span><span class="stat-val">${s.hits}</span>`;
             }
 
-            div.innerHTML = `#${p.jerseyNumber || '??'} ${displayPos} | ${p.fullName} ${sHtml}`;
+            div.innerHTML = `#${p.jerseyNumber} ${p.position.charAt(0)} ${p.fullName} ${sHtml} 
+                             <i style="text-transform:none; font-size:10px; color:var(--accent)">${p.summary || ''} ${p.note || ''}</i>`;
             list.appendChild(div);
         });
     }
 
     init();
+
 </script>
 </body>
 </html>
