@@ -29,7 +29,7 @@ exports.handler = async (event) => {
       };
 
       if (isPitcher) {
-        const s = stats.pitching || {};
+        const s = seasonStats.pitching || {};
         baseInfo.pitching = {
           era: s.era,
           inningsPitched: s.inningsPitched,
@@ -45,7 +45,7 @@ exports.handler = async (event) => {
           k9: s.strikeoutsPer9Inn
         };
       } else {
-        const s = stats.batting || {};
+        const s = seasonStats.batting || {};
         baseInfo.batting = {
           gamesPlayed: s.gamesPlayed,
           hits: s.hits,
