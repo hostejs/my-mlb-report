@@ -3,118 +3,226 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLB Scout | Pro Edition</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>MLB Stats Tracker</title>
     <style>
-        @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
+        :root {
+            --panel: #121426;
+            --page-bg: #daecee;
+            --border: #22d3ee;
+            --text-light: #ffffff;
+            --text-muted: #94a3b8;
         }
-        /* Shimmering Navy Blue Class */
-        .text-shimmer-navy {
-            background: linear-gradient(90deg, #1e3a8a 0%, #3b82f6 50%, #1e3a8a 100%);
-            background-size: 200% auto;
-            color: transparent;
-            -webkit-background-clip: text;
-            background-clip: text;
-            animation: shimmer 5s linear infinite;
-            font-weight: 900;
+
+        body {
+            background-color: var(--page-bg);
+            font-family: 'Arial Black', 'Gadget', sans-serif;
+            text-transform: uppercase;
+            margin: 0;
+            padding: 20px;
+            color: var(--text-light);
         }
-        body { background-color: #f8fafc; }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        /* Banner & Buttons */
+        .panel {
+            background-color: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .team-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .team {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            padding: 5px 10px;
+            font-size: 0.7rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .team.active, .team:hover {
+            background-color: var(--border);
+            color: var(--panel);
+        }
+
+        /* Headers */
+        .games-header, .players-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 10px;
+        }
+
+        /* Lists */
+        .game, .player {
+            padding: 10px;
+            border-bottom: 1px solid #1e293b;
+            font-size: 0.85rem;
+        }
+
+        .highlight { font-weight: bold; color: var(--border); }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 5px;
+            text-transform: none;
+            color: var(--text-muted);
+            font-family: sans-serif;
+        }
+        
+        .score-row { font-size: 1rem; color: var(--border); }
     </style>
 </head>
-<body class="p-4">
-    <div class="max-w-7xl mx-auto">
-        <header class="flex flex-col md:flex-row justify-between items-center mb-8 bg-slate-900 rounded-lg p-6 shadow-xl gap-4">
-            <div>
-                <h1 class="text-3xl font-black italic text-white tracking-tighter">MLB<span class="text-sky-400">SCOUT</span></h1>
-                <p class="text-[10px] text-slate-400 font-mono uppercase tracking-widest">Decision Tracker & Pruned Diagnostic Feed</p>
-            </div>
-            <div class="flex items-center gap-3">
-                <input type="date" id="date-picker" class="bg-slate-800 border border-slate-700 rounded px-3 py-1 text-sm text-sky-400">
-                <button onclick="copyDump()" class="bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-bold px-4 py-2 rounded uppercase transition-all">Copy AI Dump</button>
-            </div>
-        </header>
+<body>
 
-        <div id="game-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12"></div>
-
-        <div class="border-t border-slate-200 pt-8">
-            <h2 class="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-[0.2em]">Pruned Diagnostic Data Vault</h2>
-            <textarea id="ai-dump" readonly class="w-full h-64 bg-slate-50 border border-slate-200 rounded-lg p-4 font-mono text-[10px] text-slate-700 shadow-inner focus:outline-none"></textarea>
-        </div>
+<div class="container">
+    <div class="panel">
+        <div id="teamContainer" class="team-buttons">
+            </div>
     </div>
 
-    <script>
-        const picker = document.getElementById('date-picker');
-        picker.value = new Date().toISOString().split('T')[0];
+    <div class="panel">
+        <div class="games-header">
+            <div class="icon">📅</div>
+            <div>Schedule & Scores</div>
+        </div>
+        <div id="gamesList">Loading games...</div>
+    </div>
 
-        async function load(date = '') {
-            const grid = document.getElementById('game-grid');
-            const dump = document.getElementById('ai-dump');
-            grid.innerHTML = `<div class="col-span-full text-center py-20 text-blue-900 font-mono text-xs uppercase animate-pulse">Syncing League Data...</div>`;
+    <div id="statsSection" class="panel">
+        <div class="players-header">
+            <div class="icon">⚾</div>
+            <div>Roster & Season Stats</div>
+        </div>
+        <div id="playersList">Select a game to view stats</div>
+    </div>
+</div>
 
-            try {
-                const res = await fetch(`/.netlify/functions/get-mlb?date=${date}`);
-                const data = await res.json();
-                dump.value = JSON.stringify(data, null, 2);
+<script type="module">
+    import { highlightedPlayers } from './highlights.js';
 
-                if (data.length === 0) {
-                    grid.innerHTML = `<div class="col-span-full text-center py-20">No scheduled games.</div>`;
-                    return;
-                }
+    const teams = ["ARI","ATH","ATL","BAL","BOS","ChC","ChW","Cin","Cle","Col","Det","Hou","KCR","LAA","LAD","Mia","Mil","Min","NYM","NYY","Phi","Pit","SDP","SFG","Sea","StL","Tam","Tex","Tor","Was"];
+    let currentTeam = "ARI";
 
-                grid.innerHTML = data.map(game => {
-                    const renderPitcher = (team) => {
-                        let html = '';
-                        if (team.win) html += `<div class="text-shimmer-navy"><span class="text-[8px] uppercase opacity-70">Win:</span> ${team.win}</div>`;
-                        if (team.loss) html += `<div class="text-shimmer-navy"><span class="text-[8px] uppercase opacity-70">Loss:</span> ${team.loss}</div>`;
-                        if (team.save) html += `<div class="text-shimmer-navy mt-1"><span class="text-[8px] uppercase opacity-70">Save:</span> ${team.save}</div>`;
-                        return html || `<span class="text-slate-300 italic">TBD</span>`;
-                    };
+    // Setup Buttons
+    const btnContainer = document.getElementById('teamContainer');
+    teams.forEach(t => {
+        const btn = document.createElement('div');
+        btn.className = `team ${t === currentTeam ? 'active' : ''}`;
+        btn.innerText = t;
+        btn.onclick = () => {
+            document.querySelectorAll('.team').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            loadTeamData(t);
+        };
+        btnContainer.appendChild(btn);
+    });
 
-                    return `
-                        <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                            <div class="bg-gradient-to-r from-blue-900 to-slate-800 px-4 py-2 flex justify-between items-center">
-                                <span class="text-[10px] font-bold text-white uppercase">${game.venue}</span>
-                                <span class="text-[9px] font-black text-sky-300 uppercase">${game.status}</span>
-                            </div>
+    async function loadTeamData(teamCode) {
+        currentTeam = teamCode;
+        const gamesList = document.getElementById('gamesList');
+        gamesList.innerHTML = "Fetching schedule...";
 
-                            <div class="p-5">
-                                <div class="flex items-center justify-between mb-4">
-                                    <div class="w-1/3">
-                                        <div class="text-xs font-black text-slate-800 uppercase">${game.teams.away.name.split(' ').pop()}</div>
-                                        <div class="text-3xl text-shimmer-navy">${game.scores.away}</div>
-                                        <div class="text-[10px] text-shimmer-navy opacity-80 font-bold">${game.teams.away.record}</div>
-                                    </div>
-                                    <div class="text-slate-100 text-xl font-black italic">VS</div>
-                                    <div class="w-1/3 text-right">
-                                        <div class="text-xs font-black text-slate-800 uppercase">${game.teams.home.name.split(' ').pop()}</div>
-                                        <div class="text-3xl text-shimmer-navy">${game.scores.home}</div>
-                                        <div class="text-[10px] text-shimmer-navy opacity-80 font-bold">${game.teams.home.record}</div>
-                                    </div>
-                                </div>
+        // Session Caching Logic
+        const cacheKey = `mlb_games_${teamCode}`;
+        let data = sessionStorage.getItem(cacheKey);
 
-                                <div class="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
-                                    <div class="text-[10px] leading-tight">${renderPitcher(game.teams.away)}</div>
-                                    <div class="text-[10px] leading-tight text-right">${renderPitcher(game.teams.home)}</div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            } catch (err) {
-                grid.innerHTML = `<div class="col-span-full text-red-800 text-center font-mono py-10">ERROR PARSING DATA</div>`;
+        if (!data) {
+            const today = new Date().toISOString().split('T')[0];
+            const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            const resp = await fetch(`/.netlify/functions/get-schedule?startDate=${today}&endDate=${nextWeek}`);
+            data = await resp.json();
+            sessionStorage.setItem(cacheKey, JSON.stringify(data));
+        } else {
+            data = JSON.parse(data);
+        }
+
+        renderGames(data, teamCode);
+    }
+
+    function renderGames(data, teamCode) {
+        const list = document.getElementById('gamesList');
+        list.innerHTML = "";
+        
+        const games = data.dates.flatMap(d => d.games).filter(g => 
+            g.teams.home.team.name.includes(teamCode) || g.teams.away.team.name.includes(teamCode)
+        );
+
+        if (games.length === 0) {
+            list.innerHTML = "No games found for this period.";
+            return;
+        }
+
+        games.forEach(g => {
+            const div = document.createElement('div');
+            div.className = "game";
+            div.style.cursor = "pointer";
+            div.innerHTML = `
+                <div>${g.gameDate} - ${g.venue.name}</div>
+                <div class="score-row">${g.teams.away.team.name} (${g.teams.away.score || 0}) @ ${g.teams.home.team.name} (${g.teams.home.score || 0})</div>
+            `;
+            div.onclick = () => loadGameStats(g.gamePk, teamCode);
+            list.appendChild(div);
+        });
+    }
+
+    async function loadGameStats(gamePk, teamCode) {
+        const playerList = document.getElementById('playersList');
+        playerList.innerHTML = "Loading roster stats...";
+
+        const resp = await fetch(`/.netlify/functions/get-game-details?gamePk=${gamePk}`);
+        const data = await resp.json();
+        
+        // Determine if selected team is home or away in this specific game
+        const side = data.boxscore.teams.home.team.name.includes(teamCode) ? 'home' : 'away';
+        const players = data.boxscore.teams[side].players;
+
+        playerList.innerHTML = "";
+        Object.values(players).forEach(p => {
+            const isHighlighted = highlightedPlayers[teamCode]?.some(h => p.person.fullName.includes(h));
+            const pos = p.position.abbreviation;
+            const isPitcher = pos === 'P';
+            
+            const div = document.createElement('div');
+            div.className = "player";
+            
+            let statsHtml = "";
+            if (isPitcher) {
+                const s = p.seasonStats.pitching;
+                statsHtml = `ERA: ${s.era} | IP: ${s.inningsPitched} | W-L: ${s.wins}-${s.losses} | SV: ${s.saves}`;
+            } else {
+                const s = p.seasonStats.batting;
+                statsHtml = `AVG: ${s.avg} | HR: ${s.homeRuns} | RBI: ${s.rbi} | H: ${s.hits}`;
             }
-        }
 
-        picker.addEventListener('change', (e) => load(e.target.value));
-        function copyDump() {
-            const textarea = document.getElementById('ai-dump');
-            textarea.select();
-            document.execCommand('copy');
-            alert('Pruned AI data copied.');
-        }
-        load(picker.value);
-    </script>
+            div.innerHTML = `
+                <div class="${isHighlighted ? 'highlight' : ''}">
+                    #${p.jerseyNumber} ${p.person.fullName} (${pos})
+                </div>
+                <div class="stat-grid">${statsHtml}</div>
+            `;
+            playerList.appendChild(div);
+        });
+    }
+
+    // Initial Load
+    loadTeamData("ARI");
+</script>
 </body>
 </html>
