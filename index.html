@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MLB v1</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400&display=swap');
 
         :root {
-            --panel-bg: rgba(34, 211, 238, 0.15);
+            --panel-bg: rgba(18, 20, 38, 0.9);
             --page-bg: #daecee;
             --accent: #22d3ee;
             --text-light: #ffffff;
@@ -214,19 +214,19 @@
             let sHtml = "";
             if (p.pitching) {
                 const s = p.pitching;
-                sHtml = `<span class="stat-label">W-L:</span><span class="stat-val">${s.wins}-${s.losses}</span>
+                sHtml = `<span class="stat-val">(${s.wins}-${s.losses})</span>
                          <span class="stat-label">G:</span><span class="stat-val">${s.games}</span>
                          <span class="stat-label">GS:</span><span class="stat-val">${s.gamesStarted}</span>
                          <span class="stat-label">IP:</span><span class="stat-val">${s.inningsPitched}</span>
                          <span class="stat-label">ERA:</span><span class="stat-val">${s.era}</span>
                          <span class="stat-label">K/9:</span><span class="stat-val">${s.k9}</span>
+                         <span class="stat-label">Whip:</span><span class="stat-val">${s.whip}</span>
                          <span class="stat-label">CG:</span><span class="stat-val">${s.completeGames}</span>
                          <span class="stat-label">SV:</span><span class="stat-val">${s.saves}</span>`;
             } else {
                 const s = p.batting;
-                sHtml = `<span class="stat-label">AVG:</span><span class="stat-val">${s.avg}</span>
-                         <span class="stat-label">HR:</span><span class="stat-val">${s.homeruns}</span>
-                         <span class="stat-label">RBI:</span><span class="stat-val">${s.rbi}</span>
+                sHtml = `<span class="stat-label">Games:</span><span class="stat-val">${s.games}</span>
+                <span class="stat-val">${s.avg}</span>/<span class="stat-val">${s.homeruns}</span>/<span class="stat-val">${s.rbi}</span>
                          <span class="stat-label">H:</span><span class="stat-val">${s.hits}</span>`;
             }
 
