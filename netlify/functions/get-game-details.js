@@ -1,22 +1,75 @@
 const axios = require('axios');
 
 exports.handler = async (event) => {
-  const { gamePk } = event.queryStringParameters;
+  // teamId is required to know which side of the boxscore to prune
+  const { gamePk, teamId } = event.queryStringParameters;
   const url = `https://statsapi.mlb.com/api/v1.1/game/${gamePk}/feed/live`;
-  
+
   try {
     const response = await axios.get(url);
-    const liveData = response.data.liveData;
+    const boxscore = response.data.liveData.boxscore;
     
-    // We return the relevant nodes to minimize frontend parsing
+    // Determine if the requested team is 'home' or 'away'
+    const isHome = boxscore.teams.home.team.id.toString() === teamId;
+    const teamData = isHome ? boxscore.teams.home : boxscore.teams.away;
+    const players = teamData.players;
+
+    // Minimalist mapping of player data
+    const minimalPlayers = Object.values(players).map(p => {
+      const isPitcher = p.position.abbreviation === 'P';
+      const stats = p.seasonStats || {};
+      
+      const baseInfo = {
+        fullName: p.person.fullName,
+        jerseyNumber: p.jerseyNumber,
+        position: p.position.name,
+        // Game-specific notes requested
+        note: p.stats?.note || "",
+        summary: p.stats?.summary || ""
+      };
+
+      if (isPitcher) {
+        const s = stats.pitching || {};
+        baseInfo.pitching = {
+          era: s.era,
+          inningsPitched: s.inningsPitched,
+          wins: s.wins,
+          losses: s.losses,
+          saves: s.saves,
+          completeGames: s.completeGames,
+          shutouts: s.shutouts,
+          games: s.games,
+          gamesStarted: s.gamesStarted,
+          strikeOuts: s.strikeOuts,
+          whip: s.whip,
+          k9: s.strikeoutsPer9Inn
+        };
+      } else {
+        const s = stats.batting || {};
+        baseInfo.batting = {
+          gamesPlayed: s.gamesPlayed,
+          hits: s.hits,
+          homeruns: s.homeRuns,
+          avg: s.avg,
+          rbi: s.rbi
+        };
+      }
+
+      return baseInfo;
+    });
+
     return {
       statusCode: 200,
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        boxscore: liveData.boxscore,
-        plays: liveData.plays // For the "summary/note" requested
+        teamName: teamData.team.name,
+        players: minimalPlayers
       })
     };
   } catch (error) {
-    return { statusCode: 500, body: error.toString() };
+    return { 
+      statusCode: 500, 
+      body: JSON.stringify({ error: error.toString() }) 
+    };
   }
 };
