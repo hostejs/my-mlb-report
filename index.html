@@ -8,128 +8,79 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
 
         :root {
-            --panel: rgba(18, 20, 38, 0.85); /* Increased transparency */
+            --panel: rgba(18, 20, 38, 0.85);
             --page-bg: #daecee;
-            --border: rgba(34, 211, 238, 0.4);
             --accent: #22d3ee;
+            --accent-trans: rgba(34, 211, 238, 0.1);
+            --border: rgba(34, 211, 238, 0.4);
             --text-light: #ffffff;
             --text-muted: #94a3b8;
         }
 
         body {
-            background-color: var(--page-bg);
-            /* Linear gradient background to show off transparency */
             background: linear-gradient(135deg, #daecee 0%, #b8d9de 100%);
             background-attachment: fixed;
             font-family: 'Inter', sans-serif;
             text-transform: uppercase;
-            letter-spacing: 1.5px;
-            margin: 0;
-            padding: 20px;
-            color: var(--text-light);
+            letter-spacing: 1.2px;
+            margin: 0; padding: 20px; color: var(--text-light);
         }
 
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1000px; margin: 0 auto; }
 
-        /* Translucent Panel Style */
+        /* GLOBAL PANEL STYLE - Applied to every container */
         .panel {
             background-color: var(--panel);
-            backdrop-filter: blur(10px); /* See-through blur effect */
-            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border);
-            border-radius: 20px;
+            border-radius: 12px;
             padding: 20px;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
         }
 
         /* Banner Buttons */
-        .team-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            justify-content: center;
-        }
-
+        .team-buttons { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
         .team {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--border);
             color: var(--text-light);
-            padding: 6px 12px;
+            padding: 6px 10px;
             font-size: 10px;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
-            transition: all 0.2s ease;
         }
+        .team.active { background-color: var(--accent); color: #121426; }
 
-        .team.active {
-            background-color: var(--accent);
-            color: #121426;
-            border-color: var(--accent);
-        }
-
-        /* Schedule Section */
-        .horizontal-scroll {
-            display: flex;
-            gap: 15px;
-            overflow-x: auto;
-            padding-bottom: 10px;
-        }
-
-        .game-card {
-            min-width: 200px;
-            background: rgba(255, 255, 255, 0.05);
+        /* Game List - Vertical Stack */
+        .game-list { display: flex; flex-direction: column; gap: 8px; }
+        .game-row {
             padding: 12px;
-            border-radius: 12px;
+            border-radius: 8px;
             border: 1px solid transparent;
             cursor: pointer;
+            font-size: 0.9rem;
+            transition: 0.2s;
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .game-row:hover { background: var(--accent-trans); }
+        .game-row.active { 
+            border-color: var(--accent); 
+            background: var(--accent-trans); 
         }
 
-        .game-card.active { border-color: var(--accent); background: rgba(34, 211, 238, 0.1); }
-
-        /* Stats Table */
-        .section-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1.1rem;
-            margin-bottom: 20px;
-            color: var(--accent);
-        }
-
-        .game-notes {
-            background: rgba(34, 211, 238, 0.1);
-            padding: 10px;
-            border-radius: 8px;
+        /* Player Display */
+        .section-header { color: var(--accent); margin: 20px 0 10px 0; font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+        .player-line {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             font-size: 0.75rem;
-            margin-bottom: 20px;
-            text-transform: none; /* Keep notes readable */
-            font-family: sans-serif;
-            border-left: 4px solid var(--accent);
+            line-height: 1.4;
         }
-
-        .player-row {
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .player-header { display: flex; justify-content: space-between; align-items: center; }
-
-        .highlight { border-left: 4px solid var(--accent); padding-left: 10px; }
-        .highlight .name { color: var(--accent); font-weight: 900; }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 10px;
-            margin-top: 8px;
-            text-transform: none;
-            font-family: sans-serif;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        .stat-item b { color: var(--text-light); margin-left: 4px; }
+        .highlight { color: var(--accent); font-weight: 900; border-left: 3px solid var(--accent); padding-left: 8px; }
+        .stat-label { color: var(--text-muted); font-size: 0.7rem; margin-right: 2px; }
+        .stat-value { color: var(--text-light); margin-right: 8px; }
     </style>
 </head>
 <body>
@@ -140,13 +91,12 @@
     </div>
 
     <div class="panel">
-        <div class="section-title">☁️ Available Games (Last 7 Days)</div>
-        <div id="gamesList" class="horizontal-scroll"></div>
+        <div class="section-header">☁️ Schedule (Last 7 Days + Tomorrow)</div>
+        <div id="gamesList" class="game-list"></div>
     </div>
 
     <div class="panel">
-        <div class="section-title">☁️ Player Day (Season Statistics)</div>
-        <div id="gameNotes" class="game-notes"></div>
+        <div class="section-header">☁️ Team Roster & Season Stats</div>
         <div id="playersList"></div>
     </div>
 </div>
@@ -155,28 +105,40 @@
     import { highlightedPlayers } from './highlights.js';
 
     const teamMap = {
-        "ARI": "Diamondbacks", "ATH": "Athletics", "ATL": "Braves", "BAL": "Orioles",
-        "BOS": "Red Sox", "ChC": "Cubs", "ChW": "White Sox", "Cin": "Reds",
-        "Cle": "Guardians", "Col": "Rockies", "Det": "Tigers", "Hou": "Astros",
-        "KCR": "Royals", "LAA": "Angels", "LAD": "Dodgers", "Mia": "Marlins",
-        "Mil": "Brewers", "Min": "Twins", "NYM": "Mets", "NYY": "Yankees",
-        "Phi": "Phillies", "Pit": "Pirates", "SDP": "Padres", "SFG": "Giants",
-        "Sea": "Mariners", "StL": "Cardinals", "Tam": "Rays", "Tex": "Rangers",
-        "Tor": "Blue Jays", "Was": "Nationals"
+        "ARI": { name: "Diamondbacks", id: 109 }, "ATH": { name: "Athletics", id: 133 },
+        "ATL": { name: "Braves", id: 144 }, "BAL": { name: "Orioles", id: 110 },
+        "BOS": { name: "Red Sox", id: 111 }, "ChC": { name: "Cubs", id: 112 },
+        "ChW": { name: "White Sox", id: 145 }, "Cin": { name: "Reds", id: 113 },
+        "Cle": { name: "Guardians", id: 114 }, "Col": { name: "Rockies", id: 115 },
+        "Det": { name: "Tigers", id: 116 }, "Hou": { name: "Astros", id: 117 },
+        "KCR": { name: "Royals", id: 118 }, "LAA": { name: "Angels", id: 108 },
+        "LAD": { name: "Dodgers", id: 119 }, "Mia": { name: "Marlins", id: 146 },
+        "Mil": { name: "Brewers", id: 158 }, "Min": { name: "Twins", id: 142 },
+        "NYM": { name: "Mets", id: 121 }, "NYY": { name: "Yankees", id: 147 },
+        "Phi": { name: "Phillies", id: 143 }, "Pit": { name: "Pirates", id: 134 },
+        "SDP": { name: "Padres", id: 135 }, "SFG": { name: "Giants", id: 137 },
+        "Sea": { name: "Mariners", id: 136 }, "StL": { name: "Cardinals", id: 138 },
+        "Tam": { name: "Rays", id: 139 }, "Tex": { name: "Rangers", id: 140 },
+        "Tor": { name: "Blue Jays", id: 141 }, "Was": { name: "Nationals", id: 120 }
     };
 
     let fullSchedule = null;
 
     async function init() {
-        const today = new Date().toISOString().split('T')[0];
-        const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        // Date Logic: Tomorrow and 7 days back
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const endStr = tomorrow.toISOString().split('T')[0];
         
-        // Session Cache
+        const lastWeek = new Date();
+        lastWeek.setDate(lastWeek.getDate() - 7);
+        const startStr = lastWeek.toISOString().split('T')[0];
+        
         const cached = sessionStorage.getItem('mlb_full_schedule');
         if (cached) {
             fullSchedule = JSON.parse(cached);
         } else {
-            const resp = await fetch(`/.netlify/functions/get-schedule?startDate=${lastWeek}&endDate=${today}`);
+            const resp = await fetch(`/.netlify/functions/get-schedule?startDate=${startStr}&endDate=${endStr}`);
             fullSchedule = await resp.json();
             sessionStorage.setItem('mlb_full_schedule', JSON.stringify(fullSchedule));
         }
@@ -201,81 +163,89 @@
     }
 
     function loadTeamData(teamCode) {
-        const teamName = teamMap[teamCode];
+        const teamInfo = teamMap[teamCode];
         const allGames = fullSchedule.dates ? fullSchedule.dates.flatMap(d => d.games) : [];
         const teamGames = allGames.filter(g => 
-            g.teams.home.team.name.includes(teamName) || g.teams.away.team.name.includes(teamName)
+            g.teams.home.team.name.includes(teamInfo.name) || g.teams.away.team.name.includes(teamInfo.name)
         ).sort((a,b) => new Date(b.gameDate) - new Date(a.gameDate));
 
         const gamesList = document.getElementById('gamesList');
         gamesList.innerHTML = "";
 
         teamGames.forEach((g, idx) => {
-            const card = document.createElement('div');
-            card.className = `game-card ${idx === 0 ? 'active' : ''}`;
-            card.innerHTML = `
-                <div style="font-size:10px; color:var(--accent)">${new Date(g.gameDate).toLocaleDateString()}</div>
-                <div style="margin:5px 0">${g.teams.away.team.name} @ ${g.teams.home.team.name}</div>
-                <div style="font-size:12px">Score: ${g.teams.away.score || 0}-${g.teams.home.score || 0}</div>
-            `;
-            card.onclick = () => {
-                document.querySelectorAll('.game-card').forEach(c => c.classList.remove('active'));
-                card.classList.add('active');
+            const row = document.createElement('div');
+            row.className = `game-row ${idx === 0 ? 'active' : ''}`;
+            const gDate = new Date(g.gameDate).toLocaleDateString('en-US', {month:'numeric', day:'numeric', year:'numeric'});
+            row.innerText = `${gDate} ${g.teams.away.team.name} ${g.teams.away.score || 0} @ ${g.teams.home.team.name} ${g.teams.home.score || 0}`;
+            
+            row.onclick = () => {
+                document.querySelectorAll('.game-row').forEach(c => c.classList.remove('active'));
+                row.classList.add('active');
                 fetchDetails(g.gamePk, teamCode);
             };
-            gamesList.appendChild(card);
+            gamesList.appendChild(row);
         });
 
         if(teamGames.length > 0) fetchDetails(teamGames[0].gamePk, teamCode);
     }
 
     async function fetchDetails(gamePk, teamCode) {
-        const resp = await fetch(`/.netlify/functions/get-game-details?gamePk=${gamePk}`);
+        const teamId = teamMap[teamCode].id;
+        // Call Function #2 with teamId included
+        const resp = await fetch(`/.netlify/functions/get-game-details?gamePk=${gamePk}&teamId=${teamId}`);
         const data = await resp.json();
         
-        // 1. Handle Notes & Summary
-        const notesEl = document.getElementById('gameNotes');
-        // Extracting note from boxscore or plays node
-        const note = data.boxscore.info.find(i => i.label === "Note")?.value || "NO SPECIFIC GAME NOTES AVAILABLE.";
-        notesEl.innerText = `GAME SUMMARY: ${note}`;
-
-        // 2. Render Players
-        const side = data.boxscore.teams.home.team.name.includes(teamMap[teamCode]) ? 'home' : 'away';
-        const players = data.boxscore.teams[side].players;
         const listEl = document.getElementById('playersList');
         listEl.innerHTML = "";
 
-        Object.values(players).forEach(p => {
-            const isHighlighted = highlightedPlayers[teamCode]?.some(h => p.person.fullName.includes(h));
-            const isPitcher = p.position.abbreviation === 'P';
-            const s = isPitcher ? p.seasonStats.pitching : p.seasonStats.batting;
-
-            const div = document.createElement('div');
-            div.className = `player-row ${isHighlighted ? 'highlight' : ''}`;
-            
-            let statsHtml = isPitcher ? `
-                <div class="stat-item">ERA<b>${s.era}</b></div>
-                <div class="stat-item">IP<b>${s.inningsPitched}</b></div>
-                <div class="stat-item">W-L<b>${s.wins}-${s.losses}</b></div>
-                <div class="stat-item">SV<b>${s.saves}</b></div>
-                <div class="stat-item">CG<b>${s.completeGames}</b></div>
-                <div class="stat-item">SHO<b>${s.shutouts}</b></div>
-            ` : `
-                <div class="stat-item">AVG<b>${s.avg}</b></div>
-                <div class="stat-item">HR<b>${s.homeRuns}</b></div>
-                <div class="stat-item">RBI<b>${s.rbi}</b></div>
-                <div class="stat-item">HITS<b>${s.hits}</b></div>
-            `;
-
-            div.innerHTML = `
-                <div class="player-header">
-                    <span class="name">#${p.jerseyNumber} ${p.person.fullName}</span>
-                    <span style="font-size:10px; opacity:0.6">${p.position.name}</span>
-                </div>
-                <div class="stats-grid">${statsHtml}</div>
-            `;
-            listEl.appendChild(div);
+        // Separate and Sort
+        const pitchers = data.players.filter(p => p.pitching).sort((a,b) => {
+            if (b.pitching.gamesStarted !== a.pitching.gamesStarted) return b.pitching.gamesStarted - a.pitching.gamesStarted;
+            return a.fullName.localeCompare(b.fullName);
         });
+        const batters = data.players.filter(p => p.batting).sort((a,b) => a.fullName.localeCompare(b.fullName));
+
+        const renderGroup = (title, group) => {
+            const header = document.createElement('div');
+            header.className = "section-header";
+            header.innerText = title;
+            listEl.appendChild(header);
+
+            group.forEach(p => {
+                const isHighlight = highlightedPlayers[teamCode]?.some(h => p.fullName.includes(h));
+                const div = document.createElement('div');
+                div.className = `player-line ${isHighlight ? 'highlight' : ''}`;
+                
+                let stats = "";
+                if (p.pitching) {
+                    const s = p.pitching;
+                    stats = `<span class="stat-label">W-L:</span><span class="stat-value">${s.wins}-${s.losses}</span>
+                             <span class="stat-label">G:</span><span class="stat-value">${s.games}</span>
+                             <span class="stat-label">GS:</span><span class="stat-value">${s.gamesStarted}</span>
+                             <span class="stat-label">IP:</span><span class="stat-value">${s.inningsPitched}</span>
+                             <span class="stat-label">ERA:</span><span class="stat-value">${s.era}</span>
+                             <span class="stat-label">WHIP:</span><span class="stat-value">${s.whip || 'N/A'}</span>
+                             <span class="stat-label">K/9:</span><span class="stat-value">${s.k9}</span>
+                             <span class="stat-label">CG:</span><span class="stat-value">${s.completeGames}</span>
+                             <span class="stat-label">SHO:</span><span class="stat-value">${s.shutouts}</span>
+                             <span class="stat-label">SV:</span><span class="stat-value">${s.saves}</span>`;
+                } else {
+                    const s = p.batting;
+                    stats = `<span class="stat-label">AVG:</span><span class="stat-value">${s.avg}</span>
+                             <span class="stat-label">HR:</span><span class="stat-value">${s.homeruns}</span>
+                             <span class="stat-label">RBI:</span><span class="stat-value">${s.rbi}</span>
+                             <span class="stat-label">HITS:</span><span class="stat-value">${s.hits}</span>`;
+                }
+
+                div.innerHTML = `#${p.jerseyNumber} ${p.position[0]} ${p.fullName} ${stats} 
+                                 <span style="font-family:sans-serif; text-transform:none; font-size:10px; color:var(--accent)">
+                                 ${p.summary} ${p.note}</span>`;
+                listEl.appendChild(div);
+            });
+        };
+
+        renderGroup("Pitchers", pitchers);
+        renderGroup("Batters", batters);
     }
 
     init();
