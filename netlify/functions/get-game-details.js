@@ -22,14 +22,14 @@ exports.handler = async (event) => {
       const baseInfo = {
         fullName: p.person.fullName,
         jerseyNumber: p.jerseyNumber,
-        position: p.position.name,
+        position: p.position.abbreviation,
         // Game-specific notes requested
         note: p.stats?.note || "",
         summary: p.stats?.summary || ""
       };
 
       if (isPitcher) {
-        const s = seasonStats.pitching || {};
+        const s = stats.pitching || {};
         baseInfo.pitching = {
           era: s.era,
           inningsPitched: s.inningsPitched,
@@ -45,7 +45,7 @@ exports.handler = async (event) => {
           k9: s.strikeoutsPer9Inn
         };
       } else {
-        const s = seasonStats.batting || {};
+        const s = stats.batting || {};
         baseInfo.batting = {
           gamesPlayed: s.gamesPlayed,
           hits: s.hits,
