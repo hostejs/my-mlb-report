@@ -122,7 +122,9 @@
         const now = new Date();
         
         // 1. Current Date (April 8th)
-        const end = getLocalDate(now);
+        const endDateObj = new Date();
+        endDateObj.setDate(now.getDate() + 1);
+        const end = getLocalDate(endDateObj);
 
         // 2. Six days ago (April 2nd) to make the total range 7 days
         const startDateObj = new Date();
