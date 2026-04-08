@@ -172,7 +172,7 @@
                 header.innerHTML = `${info.name} | ${team.wins} - ${team.losses} ${team.pct}`;
                 startInd = 1;
             }
-            if (g.status.statusCode != "S" && plys === null){
+            if ((g.status.codedGameState == "F" || g.status.codedGameState == "I") && plys === null){
                 const data = await fetchDetails(g.gamePk, teamCode);   
                 plys = data.players; // Save it so the next iteration skips this block
                 renderRoster(plys, teamCode);
