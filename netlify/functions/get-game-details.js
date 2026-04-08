@@ -63,7 +63,10 @@ exports.handler = async (event) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         teamName: teamData.team.name,
-        players: minimalPlayers
+        players: minimalPlayers,
+        teamData,
+        teamId,
+        gamePk
       })
     };
   } catch (error) {
