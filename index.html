@@ -180,7 +180,7 @@
             const div = document.createElement('div');
             div.style.padding = "10px 0";
             const d = new Date(g.gameDate).toLocaleDateString();
-            div.innerHTML = `<span class="stat-label">${d} ${g.status.detailedState} ${g.venue.name}</span>${g.teams.away.team.name} ${g.teams.away.score || ''} @ ${g.teams.home.team.name} ${g.teams.home.score || ''}`;
+            div.innerHTML = `<span class="stat-label">${d} ${g.status.detailedState} ${g.venue.name}</span>${g.teams.away.team.name} ${g.teams.away.score ?? ''} @ ${g.teams.home.team.name} ${g.teams.home.score ?? ''}`;
             list.appendChild(div);
         }
     }
