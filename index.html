@@ -146,7 +146,7 @@
         list.innerHTML = "";
 
         var startInd = 0;
-        var plys = {};
+        var plys = null;
         filtered.forEach(g => {
             if (startInd == 0){                
                 var team = g.teams.home.team.name.includes(info.name) ? g.teams.home.leagueRecord : g.teams.away.leagueRecord;
@@ -154,9 +154,9 @@
                 header.innerHTML = `${info.name} | ${team.wins} - ${team.losses} ${team.pct}`;
                 startInd = 1;
             }
-            if (g.status.abstractGameState === "Final" && plys === {}){
-                ply = fetchDetails(g.gamePk, teamCode);   
-                renderRoster(ply.players, teamCode);
+            if (g.status.statusCode != "P" && plys === null){
+                plys = await fetchDetails(g.gamePk, teamCode);   
+                renderRoster(plys.players, teamCode);
             }
             const div = document.createElement('div');
             div.style.padding = "10px 0";
