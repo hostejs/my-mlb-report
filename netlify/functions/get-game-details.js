@@ -38,7 +38,7 @@ exports.handler = async (event) => {
           saves: s.saves,
           completeGames: s.completeGames,
           shutouts: s.shutouts,
-          games: s.games,
+          gamesPlayed: s.gamesPlayed,
           gamesStarted: s.gamesStarted,
           strikeOuts: s.strikeOuts,
           whip: s.whip,
@@ -63,10 +63,7 @@ exports.handler = async (event) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         teamName: teamData.team.name,
-        players: minimalPlayers,
-        teamData,
-        teamId,
-        gamePk
+        players: minimalPlayers        
       })
     };
   } catch (error) {
