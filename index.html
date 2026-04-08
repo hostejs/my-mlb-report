@@ -110,8 +110,17 @@
     let scheduleData = null;
 
     async function init() {
-        const start = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        const end = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const now = new Date();
+
+        // 5 Days ago (April 2nd)
+        const lastWeek = new Date();
+        lastWeek.setDate(now.getDate() - 5);
+        const start = lastWeek.toISOString().split('T')[0];
+        
+        // 1 Day ahead (April 8th)
+        const nextDay = new Date();
+        nextDay.setDate(now.getDate() + 1);
+        const end = nextDay.toISOString().split('T')[0];
         
         const resp = await fetch(`/.netlify/functions/get-schedule?startDate=${start}&endDate=${end}`);
         scheduleData = await resp.json();
@@ -154,7 +163,7 @@
                 header.innerHTML = `${info.name} | ${team.wins} - ${team.losses} ${team.pct}`;
                 startInd = 1;
             }
-            if (g.status.statusCode != "P" && plys === null){
+            if (g.status.statusCode != "S" && plys === null){
                 const data = await fetchDetails(g.gamePk, teamCode);   
                 plys = data.players; // Save it so the next iteration skips this block
                 renderRoster(plys, teamCode);
@@ -162,7 +171,7 @@
             const div = document.createElement('div');
             div.style.padding = "10px 0";
             const d = new Date(g.gameDate).toLocaleDateString();
-            div.innerHTML = `<span class="stat-label">${d} ${g.status.abstractGameState} ${g.venue.name}</span>${g.teams.away.team.name} ${g.teams.away.score || ''} @ ${g.teams.home.team.name} ${g.teams.home.score || ''}`;
+            div.innerHTML = `<span class="stat-label">${d} ${g.status.detailedState} ${g.venue.name}</span>${g.teams.away.team.name} ${g.teams.away.score || ''} @ ${g.teams.home.team.name} ${g.teams.home.score || ''}`;
             list.appendChild(div);
         }
     }
