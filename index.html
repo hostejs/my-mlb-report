@@ -146,20 +146,22 @@
         list.innerHTML = "";
 
         var startInd = 0;
+        var plys = {};
         filtered.forEach(g => {
             if (startInd == 0){                
                 var team = g.teams.home.team.name.includes(info.name) ? g.teams.home.leagueRecord : g.teams.away.leagueRecord;
                 const header = document.getElementById('team-header');
-                header.innerHTML = `${info.name} ${team.wins} - ${team.losses} ${team.pct}`;
+                header.innerHTML = `${info.name} | ${team.wins} - ${team.losses} ${team.pct}`;
                 startInd = 1;
             }
-            if (g.status.abstractGameState === "Final"){
-              fetchDetails(g.gamePk, teamCode);    
+            if (g.status.abstractGameState === "Final" && plys === {}){
+                ply = fetchDetails(g.gamePk, teamCode);   
+                renderRoster(ply.players, teamCode);
             }
             const div = document.createElement('div');
             div.style.padding = "10px 0";
             const d = new Date(g.gameDate).toLocaleDateString();
-            div.innerHtml = `<span class="stat-label">${d} ${g.status.abstractGameState} ${g.venue.name}</span>${g.teams.away.team.name} ${g.teams.away.score || ''} @ ${g.teams.home.team.name} ${g.teams.home.score || ''}`;
+            div.innerHTML = `<span class="stat-label">${d} ${g.status.abstractGameState} ${g.venue.name}</span>${g.teams.away.team.name} ${g.teams.away.score || ''} @ ${g.teams.home.team.name} ${g.teams.home.score || ''}`;
             list.appendChild(div);
         });
     }
@@ -169,7 +171,7 @@
         try {
             const resp = await fetch(`/.netlify/functions/get-game-details?gamePk=${gamePk}&teamId=${teamId}`);
             const data = await resp.json();
-            renderRoster(data.players, teamCode);
+            return data;
         } catch (e) { log(`Error: ${e.message}`); }
     }
 
@@ -193,7 +195,7 @@
             if (p.pitching) {
                 const s = p.pitching;
                 sHtml = `<span class="stat-val">(${s.wins}-${s.losses})</span>
-                         <span class="stat-label">G:</span><span class="stat-val">${s.games}</span>
+                         <span class="stat-label">G:</span><span class="stat-val">${s.gamesPlayed}</span>
                          <span class="stat-label">GS:</span><span class="stat-val">${s.gamesStarted}</span>
                          <span class="stat-label">IP:</span><span class="stat-val">${s.inningsPitched}</span>
                          <span class="stat-label">ERA:</span><span class="stat-val">${s.era}</span>
