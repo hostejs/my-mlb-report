@@ -155,8 +155,9 @@
                 startInd = 1;
             }
             if (g.status.statusCode != "P" && plys === null){
-                plys = await fetchDetails(g.gamePk, teamCode);   
-                renderRoster(plys.players, teamCode);
+                const data = await fetchDetails(g.gamePk, teamCode);   
+                plys = data.players; // Save it so the next iteration skips this block
+                renderRoster(plys, teamCode);
             }
             const div = document.createElement('div');
             div.style.padding = "10px 0";
