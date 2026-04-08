@@ -148,10 +148,11 @@
         var startInd = 0;
         filtered.forEach(g => {
             if (startInd == 0){
-                list.innerHTML = `${g.leagueRecord.wins} - ${g.leagueRecord.losses} ${g.leagueRecord.pct}`;
+                var team = g.teams.home.team.name.includes(info.name) ? g.teams.home.leagueRecord : g.teams.away.leagureRecord;
+                list.innerHTML = `${team.wins} - ${team.losses} ${team.pct}`;
             }
             if (startInd == 1){
-              fetchDetails(filtered[0].gamePk, teamCode);    
+              fetchDetails(g.gamePk, teamCode);    
             }
             const div = document.createElement('div');
             div.style.padding = "10px 0";
