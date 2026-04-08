@@ -147,7 +147,7 @@
 
         var startInd = 0;
         var plys = null;
-        filtered.forEach(g => {
+        for (const g of filtered) {
             if (startInd == 0){                
                 var team = g.teams.home.team.name.includes(info.name) ? g.teams.home.leagueRecord : g.teams.away.leagueRecord;
                 const header = document.getElementById('team-header');
@@ -164,7 +164,7 @@
             const d = new Date(g.gameDate).toLocaleDateString();
             div.innerHTML = `<span class="stat-label">${d} ${g.status.abstractGameState} ${g.venue.name}</span>${g.teams.away.team.name} ${g.teams.away.score || ''} @ ${g.teams.home.team.name} ${g.teams.home.score || ''}`;
             list.appendChild(div);
-        });
+        }
     }
 
     async function fetchDetails(gamePk, teamCode) {
