@@ -148,7 +148,7 @@
         var startInd = 0;
         filtered.forEach(g => {
             if (startInd == 0){
-                var team = g.teams.home.team.name.includes(info.name) ? g.teams.home.leagueRecord : g.teams.away.leagureRecord;
+                var team = g.teams.home.team.name.includes(info.name) ? g.teams.home.leagueRecord : g.teams.away.leagueRecord;
                 list.innerHTML = `${team.wins} - ${team.losses} ${team.pct}`;
             }
             if (startInd == 1){
