@@ -76,7 +76,7 @@
     </div>
 
     <div class="panel">
-        <div class="section-header">Schedule</div>
+        <div class="section-header" id="team-header"></div>
         <div id="gamesList"></div>
     </div>
 
@@ -147,19 +147,20 @@
 
         var startInd = 0;
         filtered.forEach(g => {
-            if (startInd == 0){
+            if (startInd == 0){                
                 var team = g.teams.home.team.name.includes(info.name) ? g.teams.home.leagueRecord : g.teams.away.leagueRecord;
-                list.innerHTML = `${team.wins} - ${team.losses} ${team.pct}`;
+                const header = document.getElementById('team-header');
+                header.innerHTML = `${info.name} ${team.wins} - ${team.losses} ${team.pct}`;
+                startInd = 1;
             }
-            if (startInd == 1){
+            if (g.status.abstractGameState === "Final"){
               fetchDetails(g.gamePk, teamCode);    
             }
             const div = document.createElement('div');
             div.style.padding = "10px 0";
             const d = new Date(g.gameDate).toLocaleDateString();
-            div.innerText = `<span class="stat-label">${d} | ${g.venue.name}</span> ${g.teams.away.team.name} ${g.teams.away.score || ''} @ ${g.teams.home.team.name} ${g.teams.home.score || ''}`;
+            div.innerHtml = `<span class="stat-label">${d} ${g.status.abstractGameState} ${g.venue.name}</span>${g.teams.away.team.name} ${g.teams.away.score || ''} @ ${g.teams.home.team.name} ${g.teams.home.score || ''}`;
             list.appendChild(div);
-            startInd++;
         });
     }
 
@@ -203,12 +204,11 @@
             } else {
                 const s = p.batting;
                 sHtml = `<span class="stat-label">Games:</span><span class="stat-val">${s.gamesPlayed}</span>
-                <span class="stat-val">${s.avg}</span>/<span class="stat-val">${s.homeruns}</span>/<span class="stat-val">${s.rbi}</span>
-                         <span class="stat-label">H:</span><span class="stat-val">${s.hits}</span>`;
+                         <span class="stat-label">H:</span><span class="stat-val">${s.hits}</span>
+                         <span class="stat-val">${s.avg}/${s.homeruns}/${s.rbi}</span>`;
             }
 
-            div.innerHTML = `#${p.jerseyNumber} ${p.position.charAt(0)} ${p.fullName} ${sHtml} 
-                             <i style="text-transform:none; font-size:10px; color:var(--accent)">${p.summary || ''} ${p.note || ''}</i>`;
+            div.innerHTML = `#${p.jerseyNumber} ${p.position} ${p.fullName} ${sHtml} <i style="text-transform:none; font-size:10px; color:var(--accent)">${p.summary || ''} ${p.note || ''}</i>`;
             list.appendChild(div);
         });
     }
