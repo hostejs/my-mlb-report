@@ -46,7 +46,7 @@
             border-radius: 4px;
             cursor: pointer;
         }
-        .team.active { background-color: var(--accent); color: #121426; }
+        .team.active { background-color: var(--panel-bg); color: var(--text-light); }
 
         .section-header { 
             color: var(--text-light); 
@@ -64,19 +64,8 @@
         /* Just bold, no glow/color */
         .highlight { font-weight: bold; color: #fff; }
 
-        .stat-label { color: var(--accent); font-weight: bold; margin-right: 3px; }
-        .stat-val { color: #fff; margin-right: 10px; }
-
-        #diagLog {
-            font-family: monospace;
-            font-size: 10px;
-            color: #00ff00;
-            background: #000;
-            height: 120px;
-            overflow-y: auto;
-            padding: 10px;
-            text-transform: none;
-        }
+        .stat-label { color: var(--accent); margin-right: 3px; }
+        .stat-val { color: #fff; margin-right: 10px; }        
     </style>
 </head>
 <body>
@@ -92,13 +81,8 @@
     </div>
 
     <div class="panel">
-        <div class="section-header">Team Roster & Statistics</div>
+        <div class="section-header">Statistics</div>
         <div id="playersList"></div>
-    </div>
-
-    <div class="panel">
-        <div class="section-header" style="font-size: 0.8rem;">Log</div>
-        <div id="diagLog">SYSTEM READY...</div>
     </div>
 </div>
 
@@ -122,19 +106,7 @@
         "Tam": { name: "Rays", id: 139 }, "Tex": { name: "Rangers", id: 140 },
         "Tor": { name: "Blue Jays", id: 141 }, "Was": { name: "Nationals", id: 120 }
     };
-
-    const posMap = {
-        "Pitcher": "P", "Catcher": "C", "First Base": "1B", "Second Base": "2B",
-        "Third Base": "3B", "Shortstop": "SS", "Outfielder": "OF", "Left Field": "LF",
-        "Center Field": "CF", "Right Field": "RF", "Designated Hitter": "DH"
-    };
-
-    const log = (msg) => {
-        const el = document.getElementById('diagLog');
-        el.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`;
-        el.scrollTop = el.scrollHeight;
-    };
-
+    
     let scheduleData = null;
 
     async function init() {
@@ -173,17 +145,21 @@
         const list = document.getElementById('gamesList');
         list.innerHTML = "";
 
+        var startInd = 0;
         filtered.forEach(g => {
+            if (startInd == 0{
+                list.innerHTML = "${g.leagueRecord.wins} - ${g.leagueRecord.losses} ${g.leagueRecord.pct}";
+            }
+            if (startInd == 1){
+              fetchDetails(filtered[0].gamePk, teamCode);    
+            }
             const div = document.createElement('div');
             div.style.padding = "10px 0";
             const d = new Date(g.gameDate).toLocaleDateString();
-            div.innerText = `${d} | ${g.teams.away.team.name} ${g.teams.away.score || 0} @ ${g.teams.home.team.name} ${g.teams.home.score || 0}`;
+            div.innerText = `${d} | ${g.venue.name} ${g.teams.away.team.name} ${g.teams.away.score || ''} @ ${g.teams.home.team.name} ${g.teams.home.score || ''}`;
             list.appendChild(div);
+            startInd++;
         });
-
-        if (filtered.length > 0) {
-            fetchDetails(filtered[0].gamePk, teamCode);
-        }
     }
 
     async function fetchDetails(gamePk, teamCode) {
