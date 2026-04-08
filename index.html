@@ -148,7 +148,7 @@
         var startInd = 0;
         filtered.forEach(g => {
             if (startInd == 0){
-                list.innerHTML = "${g.leagueRecord.wins} - ${g.leagueRecord.losses} ${g.leagueRecord.pct}";
+                list.innerHTML = `${g.leagueRecord.wins} - ${g.leagueRecord.losses} ${g.leagueRecord.pct}`;
             }
             if (startInd == 1){
               fetchDetails(filtered[0].gamePk, teamCode);    
@@ -156,7 +156,7 @@
             const div = document.createElement('div');
             div.style.padding = "10px 0";
             const d = new Date(g.gameDate).toLocaleDateString();
-            div.innerText = `${d} | ${g.venue.name} ${g.teams.away.team.name} ${g.teams.away.score || ''} @ ${g.teams.home.team.name} ${g.teams.home.score || ''}`;
+            div.innerText = `<span class="stat-label">${d} | ${g.venue.name}</span> ${g.teams.away.team.name} ${g.teams.away.score || ''} @ ${g.teams.home.team.name} ${g.teams.home.score || ''}`;
             list.appendChild(div);
             startInd++;
         });
