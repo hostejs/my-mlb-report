@@ -110,17 +110,24 @@
     let scheduleData = null;
 
     async function init() {
-        const now = new Date();
 
-        // 5 Days ago (April 2nd)
-        const lastWeek = new Date();
-        lastWeek.setDate(now.getDate() - 5);
-        const start = lastWeek.toISOString().split('T')[0];
+        // Helper to get YYYY-MM-DD in LOCAL time, not UTC
+        const getLocalDate = (dateObj) => {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        const now = new Date();
         
-        // 1 Day ahead (April 8th)
-        const nextDay = new Date();
-        nextDay.setDate(now.getDate() + 1);
-        const end = nextDay.toISOString().split('T')[0];
+        // 1. Current Date (April 8th)
+        const end = getLocalDate(now);
+
+        // 2. Six days ago (April 2nd) to make the total range 7 days
+        const startDateObj = new Date();
+        startDateObj.setDate(now.getDate() - 6);
+        const start = getLocalDate(startDateObj);
         
         const resp = await fetch(`/.netlify/functions/get-schedule?startDate=${start}&endDate=${end}`);
         scheduleData = await resp.json();
