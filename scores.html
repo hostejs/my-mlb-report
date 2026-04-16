@@ -3,70 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daily Scoreboard</title>
+    <title>MLB Dashboard 2026</title>
     <style>
         :root { --line: #d1e5f0; --accent: #e63946; --text: #2c3e50; --blue: #3498db; }
         body { font-family: 'Segoe UI', sans-serif; background: #fdfdfd; padding: 5px; color: var(--text); margin: 0; line-height: 1.2; }
         
-        /* Dashboard stretches to 98% of the viewport width */
-        .dashboard { 
-            display: flex; 
-            width: 98vw; 
-            margin: 0 auto; 
-            gap: 12px; 
-            padding-top: 5px;
-        }
+        .dashboard { display: flex; width: 98vw; margin: 0 auto; gap: 12px; padding-top: 5px; }
 
-        /* YESTERDAY: Bigger section, game boxes float left-to-right */
-        .yesterday-section { 
-            flex: 1; 
-            background: white; 
-            border-left: 5px solid var(--accent); 
-            padding: 10px; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
-        }
-        #y-content { 
-            display: flex; 
-            flex-wrap: wrap; 
-            gap: 8px; 
-        }
+        /* YESTERDAY: Floating Boxes */
+        .yesterday-section { flex: 1; background: white; border-left: 5px solid var(--accent); padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        #y-content { display: flex; flex-wrap: wrap; gap: 8px; }
+        
         .game-box { 
-            flex: 0 1 200px; /* Floating box width */
+            flex: 0 0 210px; /* FIXED WIDTH - won't grow */
             border: 1px solid #eee;
             padding: 6px;
             border-radius: 4px;
-            font-size: 9px; /* Tiny print */
+            font-size: 9px; 
             background: #fff;
+            box-sizing: border-box;
+            overflow: hidden;
         }
 
-        /* RIGHT SIDEBAR: Sequential vertical layout for Today/Tomorrow */
-        .sidebar { 
-            flex: 0 0 240px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 12px;
-        }
-        .sidebar-section { 
-            background: white; 
-            border-left: 5px solid var(--blue); 
-            padding: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
+        /* SIDEBAR: Sequential Vertical */
+        .sidebar { flex: 0 0 240px; display: flex; flex-direction: column; gap: 12px; }
+        .sidebar-section { background: white; border-left: 5px solid var(--blue); padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
 
         .header { font-size: 11px; font-weight: 800; color: var(--accent); border-bottom: 2px solid var(--accent); margin-bottom: 8px; text-transform: uppercase; }
         .blue-header { color: var(--blue); border-bottom-color: var(--blue); }
 
-        /* Game & Team Styling */
         .team { display: flex; align-items: center; justify-content: space-between; font-weight: 700; height: 16px; }
         .info { display: flex; align-items: center; gap: 5px; white-space: nowrap; overflow: hidden; }
         .logo { width: 15px; height: 15px; }
         .score { font-family: monospace; font-size: 11px; background: #f0f4f8; padding: 0 4px; border-radius: 2px; }
-        .stats-line { font-size: 8.5px; color: #666; font-style: italic; margin-top: 4px; border-top: 1px solid #f5f5f5; padding-top: 3px; display: block; }
-        .headline { font-size: 8.5px; background: #f0f7ff; border-left: 2px solid #3498db; padding: 4px; margin-top: 5px; color: #2980b9; border-radius: 0 2px 2px 0; }
-
-        /* Sidebar Item Styling */
+        
+        /* Stats Line: Tiny print, forced single line to prevent box stretching */
+        .stats-line { 
+            font-size: 8px; 
+            color: #666; 
+            font-style: italic; 
+            margin-top: 4px; 
+            border-top: 1px solid #f5f5f5; 
+            padding-top: 3px; 
+            display: block;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            overflow: hidden;
+        }
+        
         .item { border-bottom: 1px solid #f0f0f0; padding: 5px 0; font-size: 10px; }
-        .item:last-child { border-bottom: none; }
         .pitchers { font-size: 9px; color: #555; margin-top: 2px; display: block; }
     </style>
 </head>
@@ -75,121 +60,110 @@
 <div class="dashboard">
     <div class="yesterday-section">
         <div class="header">Yesterday's Roundup</div>
-        <div id="y-content">Loading scores...</div>
+        <div id="y-content">Loading...</div>
     </div>
 
     <div class="sidebar">
         <div class="sidebar-section">
-            <div class="header blue-header">Today's Starters</div>
+            <div class="header blue-header">Today</div>
             <div id="t-content">Loading...</div>
         </div>
         <div class="sidebar-section">
-            <div class="header blue-header">Tomorrow's Starters</div>
+            <div class="header blue-header">Tomorrow</div>
             <div id="tom-content">Loading...</div>
         </div>
     </div>
 </div>
 
 <script>
-    // Using the path as defined in your redirect rule
     const API = "/mlb-api"; 
 
-    async function getGameDetails(gamePk) {
-        try {
-            const res = await fetch(`${API}/game/${gamePk}/content`);
-            const data = await res.json();
-            return data.editorial?.recap?.mlb?.headline || "";
-        } catch (e) { return ""; }
-    }
-
     async function load() {
-    const now = new Date();
-    const fmt = (d) => d.toISOString().split('T')[0];
-    const dates = {
-        y: "2026-04-15", // fmt(yesterday)
-        t: "2026-04-16",
-        tm: "2026-04-17"
-    };
-
-    try {
-        // 1. Fetch the schedule first to get the Pitcher IDs
-        const yRes = await fetch(`${API}/schedule/games/?sportId=1&date=${dates.y}&hydrate=team,decisions(person)`);
-        const yData = await yRes.json();
-        
-        // --- PRO STEP: Collect all unique pitcher IDs ---
-        const pitcherIds = new Set();
-        if (yData.dates?.[0]) {
-            yData.dates[0].games.forEach(g => {
-                if (g.decisions?.winner?.id) pitcherIds.add(g.decisions.winner.id);
-                if (g.decisions?.loser?.id) pitcherIds.add(g.decisions.loser.id);
-                if (g.decisions?.save?.id) pitcherIds.add(g.decisions.save.id);
-            });
-        }
-
-        // --- PRO STEP: One single batch fetch for all pitchers ---
-        let pitcherStatsMap = {};
-        if (pitcherIds.size > 0) {
-            const idsJoined = Array.from(pitcherIds).join(',');
-            // We fetch the people and hydrate their current season pitching stats
-            const pRes = await fetch(`${API}/people?personIds=${idsJoined}&hydrate=stats(group=[pitching],type=[season])`);
-            const pData = await pRes.json();
-            
-            // DIAGNOSTIC: See the batch stats in your console
-            console.log("--- PRO BATCH PITCHER DATA ---", pData.people);
-
-            // Map the data by ID for easy lookup
-            pData.people.forEach(person => {
-                const s = person.stats?.[0]?.splits?.[0]?.stat;
-                pitcherStatsMap[person.id] = s ? {
-                    record: `${s.wins}-${s.losses}`,
-                    era: s.era,
-                    saves: s.saves
-                } : null;
-            });
-        }
-
-        // --- Helper to format the line ---
-        const getPStat = (p, isSave = false) => {
-            if (!p || !pitcherStatsMap[p.id]) return p ? p.fullName : "N/A";
-            const s = pitcherStatsMap[p.id];
-            const detail = isSave ? `${s.saves} SV, ${s.era}` : `${s.record}, ${s.era}`;
-            return `${p.fullName} (${detail})`;
+        const now = new Date();
+        const fmt = (d) => d.toISOString().split('T')[0];
+        const dates = {
+            y: fmt(new Date(new Date().setDate(now.getDate() - 1))),
+            t: fmt(now),
+            tm: fmt(new Date(new Date().setDate(now.getDate() + 1)))
         };
 
-        // 2. Build the HTML
-        let yHtml = "";
-        if (yData.dates?.[0]) {
-            for (const g of yData.dates[0].games) {
-                const away = g.teams.away;
-                const home = g.teams.home;
-                
-                yHtml += `
-                <div class="game-card">
-                    <div class="team">
-                        <div class="info"><img class="logo" src="https://www.mlbstatic.com/team-logos/${away.team.id}.svg"> ${away.team.name} (${away.leagueRecord.wins}-${away.leagueRecord.losses})</div>
-                        <span class="score">${away.score ?? 0}</span>
-                    </div>
-                    <div class="team">
-                        <div class="info"><img class="logo" src="https://www.mlbstatic.com/team-logos/${home.team.id}.svg"> ${home.team.name} (${home.leagueRecord.wins}-${home.leagueRecord.losses})</div>
-                        <span class="score">${home.score ?? 0}</span>
-                    </div>
-                    <span class="stats-line">
-                        W: ${getPStat(g.decisions?.winner)}<br>
-                        L: ${getPStat(g.decisions?.loser)}
-                        ${g.decisions?.save ? `<br>S: ${getPStat(g.decisions.save, true)}` : ''}
-                    </span>
-                </div>`;
+        try {
+            // 1. Fetch Yesterday's Schedule
+            const yRes = await fetch(`${API}/schedule/games/?sportId=1&date=${dates.y}&hydrate=team,decisions(person),leagueRecord`);
+            const yData = await yRes.json();
+            
+            // Collect Pitcher IDs for Pro Batch Stats
+            const pIds = new Set();
+            if (yData.dates?.[0]) {
+                yData.dates[0].games.forEach(g => {
+                    ['winner', 'loser', 'save'].forEach(k => { if(g.decisions?.[k]?.id) pIds.add(g.decisions[k].id); });
+                });
             }
+
+            // Batch Fetch Pitcher Stats
+            let pMap = {};
+            if (pIds.size > 0) {
+                const pRes = await fetch(`${API}/people?personIds=${Array.from(pIds).join(',')}&hydrate=stats(group=[pitching],type=[season])`);
+                const pData = await pRes.json();
+                (pData.people || []).forEach(p => {
+                    const s = p.stats?.[0]?.splits?.[0]?.stat;
+                    if (s) pMap[p.id] = { rec: `${s.wins}-${s.losses}`, era: s.era, sv: s.saves };
+                });
+            }
+
+            const getP = (p, isSv = false) => {
+                if (!p) return "N/A";
+                const s = pMap[p.id];
+                return s ? `${p.fullName} (${isSv ? s.sv+'SV' : s.rec}, ${s.era})` : p.fullName;
+            };
+
+            // Build Yesterday HTML
+            let yHtml = "";
+            if (yData.dates?.[0]) {
+                yData.dates[0].games.forEach(g => {
+                    const away = g.teams.away; const home = g.teams.home;
+                    yHtml += `
+                    <div class="game-box">
+                        <div class="team">
+                            <div class="info"><img class="logo" src="https://www.mlbstatic.com/team-logos/${away.team.id}.svg"> ${away.team.name} (${away.leagueRecord.wins}-${away.leagueRecord.losses})</div>
+                            <span class="score">${away.score ?? 0}</span>
+                        </div>
+                        <div class="team">
+                            <div class="info"><img class="logo" src="https://www.mlbstatic.com/team-logos/${home.team.id}.svg"> ${home.team.name} (${home.leagueRecord.wins}-${home.leagueRecord.losses})</div>
+                            <span class="score">${home.score ?? 0}</span>
+                        </div>
+                        <span class="stats-line" title="W: ${getP(g.decisions?.winner)} | L: ${getP(g.decisions?.loser)}">
+                            W: ${getP(g.decisions?.winner)}<br>L: ${getP(g.decisions?.loser)}
+                            ${g.decisions?.save ? `<br>S: ${getP(g.decisions.save, true)}` : ''}
+                        </span>
+                    </div>`;
+                });
+            }
+            document.getElementById('y-content').innerHTML = yHtml || "No games.";
+
+            // 2. Sidebar Starters (Restored and moved inside the main Try block)
+            const fill = async (date, id) => {
+                try {
+                    const res = await fetch(`${API}/schedule/games/?sportId=1&date=${date}&hydrate=team,probablePitcher`);
+                    const d = await res.json();
+                    let h = "";
+                    if (d.dates?.[0]) {
+                        d.dates[0].games.forEach(g => {
+                            h += `<div class="item"><strong>${g.teams.away.team.name} @ ${g.teams.home.team.name}</strong><br>
+                                  <span class="pitchers">${g.teams.away.probablePitcher?.fullName || 'TBD'} vs ${g.teams.home.probablePitcher?.fullName || 'TBD'}</span></div>`;
+                        });
+                    }
+                    document.getElementById(id).innerHTML = h || "Off Day";
+                } catch(e) { document.getElementById(id).innerHTML = "Error"; }
+            };
+
+            fill(dates.t, 't-content');
+            fill(dates.tm, 'tom-content');
+
+        } catch (e) {
+            document.getElementById('y-content').innerHTML = "Failed to load.";
         }
-        document.getElementById('y-content').innerHTML = yHtml || "No games.";
-
-        // ... existing sidebar logic ...
-
-    } catch (e) {
-        console.error("Load failed", e);
     }
-}
-
     load();
 </script>
 </body>
