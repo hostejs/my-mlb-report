@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLB Dashboard 2026</title>
+    <title>Daily Scoreboard</title>
     <style>
-        :root { --line: #d1e5f0; --accent: #e63946; --text: #2c3e50; --blue: #3498db; }
+        :root { --line: #d1e5f0; --accent: #e63946; --text: #2c3e50; --blue: #1a508b; --dark-text: #1a2a3a; }
         body { font-family: 'Segoe UI', sans-serif; background: #fdfdfd; padding: 5px; color: var(--text); margin: 0; line-height: 1.2; }
         
         .dashboard { display: flex; width: 98vw; margin: 0 auto; gap: 12px; padding-top: 5px; }
 
-        /* YESTERDAY: Floating Boxes */
+        /* YESTERDAY */
         .yesterday-section { flex: 1; background: white; border-left: 5px solid var(--accent); padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         #y-content { display: flex; flex-wrap: wrap; gap: 8px; }
         
@@ -26,8 +26,8 @@
             flex-direction: column;
         }
 
-        /* SIDEBAR: Sequential Vertical */
-        .sidebar { flex: 0 0 240px; display: flex; flex-direction: column; gap: 12px; }
+        /* SIDEBAR - Widened slightly for horizontal room */
+        .sidebar { flex: 0 0 320px; display: flex; flex-direction: column; gap: 12px; }
         .sidebar-section { background: white; border-left: 5px solid var(--blue); padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
 
         .header { font-size: 11px; font-weight: 800; color: var(--accent); border-bottom: 2px solid var(--accent); margin-bottom: 8px; text-transform: uppercase; }
@@ -38,10 +38,11 @@
         .logo { width: 15px; height: 15px; }
         .score { font-family: monospace; font-size: 11px; background: #f0f4f8; padding: 0 4px; border-radius: 2px; }
         
+        /* Darkened Pitcher/Headline Text for Readability */
         .stats-line { 
-            font-size: 8px; 
-            color: #666; 
-            font-style: italic; 
+            font-size: 8.5px; 
+            color: var(--dark-text); /* Black-ish/Blue-ish */
+            font-weight: 500;
             margin-top: 4px; 
             border-top: 1px solid #f5f5f5; 
             padding-top: 3px; 
@@ -50,24 +51,25 @@
             overflow: hidden;
         }
 
-        /* The Headline Box is Back */
         .headline-box {
-            font-size: 8px;
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
+            font-size: 8.5px;
+            background: #f0f4f8;
+            border: 1px solid #d1e5f0;
             padding: 4px;
             margin-top: 6px;
-            color: #495057;
+            color: var(--dark-text); /* Darker text */
             border-radius: 2px;
             line-height: 1.1;
         }
 
-        .venue-tag { font-size: 7.5px; color: #999; text-transform: uppercase; margin-top: 2px; }
-        .status-tag { font-weight: bold; color: var(--accent); font-size: 8px; }
+        .venue-tag { font-size: 7.5px; color: #777; text-transform: uppercase; margin-top: 2px; }
         
-        .item { border-bottom: 1px solid #f0f0f0; padding: 5px 0; font-size: 10px; }
-        .g-time { color: var(--blue); font-weight: bold; font-size: 8.5px; margin-right: 5px; }
-        .pitchers { font-size: 9px; color: #555; margin-top: 2px; display: block; }
+        /* SIDEBAR ITEMS: Horizontal Layout */
+        .item { border-bottom: 1px solid #f0f0f0; padding: 6px 0; font-size: 9.5px; }
+        .g-row { display: flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+        .g-time { color: var(--blue); font-weight: 800; font-size: 9px; flex-shrink: 0; }
+        .g-teams-pitchers { overflow: hidden; text-overflow: ellipsis; }
+        .v-row { font-size: 7.5px; color: #888; margin-left: 52px; } /* Aligns under the team names */
     </style>
 </head>
 <body>
@@ -156,7 +158,7 @@
                             <span class="score">${isPpd ? '-' : (home.score ?? 0)}</span>
                         </div>
                         <div class="venue-tag">${g.venue.name}</div>
-                        ${isPpd ? `<div class="status-tag">${g.status.detailedState} ${g.status.reason || ''}</div>` : `
+                        ${isPpd ? `<div class="stats-line" style="color:red">** ${g.status.detailedState} **</div>` : `
                             <span class="stats-line">
                                 W: ${getP(g.decisions?.winner)}<br>L: ${getP(g.decisions?.loser)}
                                 ${g.decisions?.save ? `<br>S: ${getP(g.decisions.save, true)}` : ''}
@@ -168,7 +170,7 @@
             }
             document.getElementById('y-content').innerHTML = yHtml || "No games.";
 
-            // 2. SIDEBAR (Today/Tomorrow)
+            // 2. SIDEBAR (Horizontalized)
             const fill = async (date, id) => {
                 try {
                     const res = await fetch(`${API}/schedule/games/?sportId=1&date=${date}&hydrate=team,probablePitcher,venue`);
@@ -177,10 +179,17 @@
                     if (d.dates?.[0]) {
                         d.dates[0].games.forEach(g => {
                             const timeStr = new Date(g.gameDate).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                            const awayP = g.teams.away.probablePitcher?.fullName || 'TBD';
+                            const homeP = g.teams.home.probablePitcher?.fullName || 'TBD';
+                            
                             h += `<div class="item">
-                                    <span class="g-time">${timeStr}</span> <strong>${g.teams.away.team.name} @ ${g.teams.home.team.name}</strong><br>
-                                    <span class="venue-tag" style="display:block">${g.venue.name}</span>
-                                    <span class="pitchers">${g.teams.away.probablePitcher?.fullName || 'TBD'} vs ${g.teams.home.probablePitcher?.fullName || 'TBD'}</span>
+                                    <div class="g-row">
+                                        <span class="g-time">${timeStr}</span>
+                                        <span class="g-teams-pitchers">
+                                            ${g.teams.away.team.name} (${awayP}) @ ${g.teams.home.team.name} (${homeP})
+                                        </span>
+                                    </div>
+                                    <div class="v-row">${g.venue.name}</div>
                                   </div>`;
                         });
                     }
