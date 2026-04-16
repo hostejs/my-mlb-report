@@ -86,6 +86,20 @@
 </div>
 
 <script>
+    // DIAGNOSTIC FUNCTION: Logs game data to console to find Pitcher Decision paths
+    function runPitcherDiagnostics(gameData, boxData) {
+        console.log("--- PITCHER DIAGNOSTICS ---");
+        console.log("1. Decisions Object (from Schedule):", gameData.decisions);
+        if (gameData.decisions) {
+            console.log("   - Winner Name:", gameData.decisions.winner?.fullName);
+            console.log("   - Loser Name:", gameData.decisions.loser?.fullName);
+            console.log("   - Save Name:", gameData.decisions.save?.fullName);
+        }
+        console.log("2. Boxscore Pitchers (from Boxscore):", boxData.teams.away.players);
+        // Boxscore usually requires filtering players where stats.pitching is present
+        console.log("---------------------------");
+    }
+    
     const API = "/mlb-api"; 
 
     async function getGameDetails(gamePk) {
@@ -111,6 +125,13 @@
             let yHtml = "";
             
             if (yData.dates?.[0]) {
+                // Run diagnostic on the very first game found
+                const firstGame = yData.dates[0].games[0];
+                if (firstGame) {
+                    const diagDetails = await getGameDetails(firstGame.gamePk);
+                    runPitcherDiagnostics(firstGame, diagDetails.boxscore);
+                }
+                
                 for (const g of yData.dates[0].games) {
                     const headline = await getGameDetails(g.gamePk);
                     const win = g.decisions?.winner;
