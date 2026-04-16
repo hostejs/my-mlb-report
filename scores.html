@@ -5,91 +5,66 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daily Scoreboard</title>
     <style>
-        :root { --line: #d1e5f0; --accent: #e63946; --text: #2c3e50; --bg: #f8f9fa; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f3; padding: 20px; color: var(--text); }
+        :root { --line: #d1e5f0; --accent: #e63946; --text: #2c3e50; }
+        body { font-family: 'Segoe UI', sans-serif; background: #fdfdfd; padding: 15px; color: var(--text); line-height: 1.2; }
         
-        /* THE NEW LAYOUT: Flex container to span horizontally */
-        .container { 
+        /* The main container spans horizontal */
+        .notebook-container { 
             display: flex; 
-            max-width: 1100px; 
+            max-width: 1000px; 
             margin: auto; 
-            gap: 25px; 
-            align-items: flex-start;
+            gap: 20px; 
+            background: white; 
+            border-left: 6px solid var(--accent); 
+            padding: 20px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            border-radius: 4px; 
         }
 
-        /* MAIN COLUMN (Yesterday) */
-        .main-col { flex: 2; background: white; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-radius: 8px; border-top: 5px solid var(--accent); }
+        /* Left side: Yesterday (Scrunched) */
+        .left-col { flex: 1; border-right: 1px solid var(--line); padding-right: 15px; }
         
-        /* SIDEBAR (Today/Tomorrow) */
-        .sidebar { flex: 1; min-width: 300px; }
-        .side-section { background: white; padding: 15px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-left: 4px solid #3498db; }
+        /* Right side: Today/Tomorrow columns */
+        .right-cols { flex: 2; display: flex; gap: 20px; }
+        .schedule-section { flex: 1; }
 
-        .header { font-size: 16px; font-weight: 800; color: var(--accent); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--line); padding-bottom: 5px; }
-        .side-header { font-size: 14px; font-weight: 700; color: #3498db; margin-bottom: 10px; text-transform: uppercase; }
+        .header { font-size: 14px; font-weight: 800; color: var(--accent); border-bottom: 2px solid var(--accent); margin-bottom: 10px; text-transform: uppercase; }
+        
+        /* Yesterday's Small Print Styling */
+        .game { border-bottom: 1px solid #f0f0f0; padding: 6px 0; font-size: 11px; }
+        .team { display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
+        .info { display: flex; align-items: center; gap: 5px; }
+        .logo { width: 16px; height: 16px; }
+        .stats { font-size: 10px; color: #777; font-style: italic; margin-left: 21px; display: block; }
+        .score { font-family: monospace; font-size: 1.1em; color: #1d3557; margin-left: 10px; }
 
-        /* SCORING STYLING */
-        .game-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; border-bottom: 1px solid #f0f0f0; padding: 15px 0; }
-        .team-box { display: flex; align-items: center; justify-content: space-between; }
-        .logo { width: 24px; height: 24px; margin-right: 10px; }
-        .team-name { font-weight: 600; font-size: 14px; }
-        .record { font-size: 10px; color: #999; font-weight: 400; display: block; }
-        .score { font-family: 'Courier New', monospace; font-size: 1.4em; font-weight: bold; color: #1d3557; }
-        
-        .pitcher-line { grid-column: span 2; font-size: 11px; color: #666; font-style: italic; margin-top: 8px; background: #f9f9f9; padding: 4px 8px; border-radius: 4px; }
-        
-        /* SCHEDULE STYLING */
-        .schedule-item { font-size: 12px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; line-height: 1.3; }
-        .schedule-item:last-child { border: none; }
-        .time { color: var(--accent); font-weight: 700; margin-right: 5px; }
-        .matchup { font-weight: 600; }
-        .starters { color: #777; font-size: 11px; display: block; margin-top: 2px; }
+        /* Schedule styling (Right side) */
+        .item { border-left: 2px solid #a8dadc; padding-left: 8px; margin-bottom: 8px; font-size: 11px; }
+        .time { color: var(--accent); font-weight: bold; font-size: 10px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="main-col">
-        <div class="header">Yesterday's Roundup</div>
-        <div id="y-content">Loading scores...</div>
+<div class="notebook-container">
+    <div class="left-col">
+        <div class="header">Yesterday</div>
+        <div id="y-content">Loading...</div>
     </div>
 
-    <div class="sidebar">
-        <div class="side-section">
-            <div class="side-header">Today</div>
+    <div class="right-cols">
+        <div class="schedule-section">
+            <div class="header">Today</div>
             <div id="t-content">Loading...</div>
         </div>
-        
-        <div class="side-section">
-            <div class="side-header">Tomorrow</div>
+        <div class="schedule-section">
+            <div class="header">Tomorrow</div>
             <div id="tom-content">Loading...</div>
         </div>
     </div>
 </div>
 
 <script>
-    const API = "https://statsapi.mlb.com/api/v1"; 
-
-    async function getDecisions(gamePk) {
-        try {
-            // Updated hydration to get season stats directly without needing extra feed calls
-            const res = await fetch(`${API}/game/${gamePk}/feed/live?hydrate=decisions,person(stats(type=season))`);
-            const data = await res.json();
-            const dec = data.liveData.decisions;
-            const box = data.liveData.boxscore.teams;
-
-            const formatP = (playerObj) => {
-                if (!playerObj) return "N/A";
-                const stats = playerObj.seasonStats?.pitching || {wins:0, losses:0, era:"-.--"};
-                return `${playerObj.fullName} (${stats.wins}-${stats.losses}, ${stats.era})`;
-            };
-
-            const w = dec.winner ? `W: ${formatP(dec.winner)}` : "W: TBD";
-            const l = dec.loser ? `L: ${formatP(dec.loser)}` : "L: TBD";
-            const s = dec.save ? ` | S: ${formatP(dec.save)}` : "";
-
-            return `${w} | ${l}${s}`;
-        } catch (e) { return "Stats currently unavailable"; }
-    }
+    const API = "/mlb-api"; // Proxied to statsapi.mlb.com
 
     async function load() {
         const now = new Date();
@@ -100,61 +75,58 @@
             tm: fmt(new Date(new Date().setDate(now.getDate() + 1)))
         };
 
-        // Yesterday's Logic
-        const yRes = await fetch(`${API}/schedule/games/?sportId=1&date=${dates.y}`);
+        // Yesterday with Pitcher Stats hydration
+        const yRes = await fetch(`${API}/v1/schedule/games/?sportId=1&date=${dates.y}&hydrate=team,decisions,person(stats(type=season))`);
         const yData = await yRes.json();
         let yHtml = "";
 
         if (yData.dates?.[0]) {
-            for (const g of yData.dates[0].games) {
-                const pLine = await getDecisions(g.gamePk);
-                yHtml += `
-                <div class="game-row">
-                    <div class="team-box">
-                        <div style="display:flex; align-items:center;">
-                            <img class="logo" src="https://www.mlbstatic.com/team-logos/${g.teams.away.team.id}.svg">
-                            <div>
-                                <span class="team-name">${g.teams.away.team.name}</span>
-                                <span class="record">${g.teams.away.leagueRecord.wins}-${g.teams.away.leagueRecord.losses}</span>
-                            </div>
-                        </div>
-                        <span class="score">${g.teams.away.score ?? 0}</span>
-                    </div>
-                    <div class="team-box">
-                        <div style="display:flex; align-items:center;">
-                            <img class="logo" src="https://www.mlbstatic.com/team-logos/${g.teams.home.team.id}.svg">
-                            <div>
-                                <span class="team-name">${g.teams.home.team.name}</span>
-                                <span class="record">${g.teams.home.leagueRecord.wins}-${g.teams.home.leagueRecord.losses}</span>
-                            </div>
-                        </div>
-                        <span class="score">${g.teams.home.score ?? 0}</span>
-                    </div>
-                    <div class="pitcher-line">${pLine}</div>
-                </div>`;
-            }
-        }
-        document.getElementById('y-content').innerHTML = yHtml || "No games yesterday.";
+            yData.dates[0].games.forEach(g => {
+                const getP = (p) => {
+                    if (!p) return "";
+                    const s = p.seasonStats?.pitching || {wins:0, losses:0, era:".--"};
+                    return `${p.fullName} (${s.wins}-${s.losses}, ${s.era})`;
+                };
 
-        // Sidebar Logic (Today/Tomorrow)
-        async function fillSide(date, id) {
-            const res = await fetch(`${API}/schedule/games/?sportId=1&date=${date}&hydrate=team,probablePitcher`);
+                const winner = g.decisions?.winner ? `W: ${getP(g.decisions.winner)}` : "W: N/A";
+                const loser = g.decisions?.loser ? `L: ${getP(g.decisions.loser)}` : "L: N/A";
+                const saver = g.decisions?.save ? ` | S: ${getP(g.decisions.save)}` : "";
+
+                yHtml += `
+                <div class="game">
+                    <div class="team">
+                        <div class="info"><img class="logo" src="https://www.mlbstatic.com/team-logos/${g.teams.away.team.id}.svg"> ${g.teams.away.team.name}</div>
+                        <span class="score">${g.teams.away.score??0}</span>
+                    </div>
+                    <div class="team">
+                        <div class="info"><img class="logo" src="https://www.mlbstatic.com/team-logos/${g.teams.home.team.id}.svg"> ${g.teams.home.team.name}</div>
+                        <span class="score">${g.teams.home.score??0}</span>
+                    </div>
+                    <span class="stats">${winner} | ${loser}${saver}</span>
+                </div>`;
+            });
+        }
+        document.getElementById('y-content').innerHTML = yHtml || "No games.";
+
+        // Schedule Logic (Today/Tomorrow)
+        const fill = async (date, id) => {
+            const res = await fetch(`${API}/v1/schedule/games/?sportId=1&date=${date}&hydrate=team,probablePitcher`);
             const data = await res.json();
             let h = "";
             (data.dates?.[0]?.games || []).forEach(g => {
-                const time = new Date(g.gameDate).toLocaleTimeString([], {hour: '2:digit', minute:'2:digit'});
+                const time = new Date(g.gameDate).toLocaleTimeString([], {hour: 'numeric', minute:'2:digit'});
                 h += `
-                <div class="schedule-item">
-                    <span class="time">${time}</span>
-                    <span class="matchup">${g.teams.away.team.teamName} @ ${g.teams.home.team.teamName}</span>
-                    <span class="starters">${g.teams.away.probablePitcher?.fullName || 'TBD'} vs ${g.teams.home.probablePitcher?.fullName || 'TBD'}</span>
+                <div class="item">
+                    <div class="time">${time}</div>
+                    <strong>${g.teams.away.team.teamName} @ ${g.teams.home.team.teamName}</strong><br>
+                    ${g.teams.away.probablePitcher?.fullName || 'TBD'} vs ${g.teams.home.probablePitcher?.fullName || 'TBD'}
                 </div>`;
             });
-            document.getElementById(id).innerHTML = h || "No games scheduled.";
-        }
+            document.getElementById(id).innerHTML = h || "Off Day";
+        };
 
-        fillSide(dates.t, 't-content');
-        fillSide(dates.tm, 'tom-content');
+        fill(dates.t, 't-content');
+        fill(dates.tm, 'tom-content');
     }
     load();
 </script>
