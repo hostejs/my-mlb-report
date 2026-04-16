@@ -3,79 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daily Scoreboard</title>
+    <title>MLB Dashboard 2026 - Debug Mode</title>
     <style>
         :root { --line: #d1e5f0; --accent: #e63946; --text: #2c3e50; --blue: #3498db; }
-        body { font-family: 'Segoe UI', sans-serif; background: #fdfdfd; padding: 5px; color: var(--text); margin: 0; overflow-x: hidden; }
+        body { font-family: 'Segoe UI', sans-serif; background: #fdfdfd; padding: 5px; color: var(--text); margin: 0; }
         
-        /* 98-100% Viewport Width Layout */
-        .dashboard { 
-            display: flex; 
-            width: 98vw; 
-            margin: 0 auto; 
-            gap: 10px; 
-            padding-top: 5px;
-        }
+        .dashboard { display: flex; width: 98vw; margin: 0 auto; gap: 10px; padding-top: 5px; }
 
-        /* BIGGER Yesterday Section - Floating Boxes */
-        .yesterday-main { 
-            flex: 1; 
-            background: white; 
-            border-left: 4px solid var(--accent); 
-            padding: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-        
-        /* The container that lets boxes float left-to-right then down */
-        #y-content { 
-            display: flex; 
-            flex-wrap: wrap; 
-            gap: 6px; 
-        }
+        /* Left Section: Floating Game Boxes */
+        .yesterday-main { flex: 1; background: white; border-left: 4px solid var(--accent); padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        #y-content { display: flex; flex-wrap: wrap; gap: 6px; }
+        .game-card { flex: 0 1 190px; border: 1px solid #eee; padding: 5px; border-radius: 3px; font-size: 9px; background: #fff; }
 
-        .game-card { 
-            flex: 0 1 190px; /* Floating box size */
-            border: 1px solid #eee;
-            padding: 5px;
-            border-radius: 3px;
-            font-size: 9px; /* Tiny print */
-            background: #fff;
-        }
-
-        /* Static Sidebar for Today/Tomorrow */
-        .sidebar { 
-            flex: 0 0 220px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 10px;
-        }
-        .sidebar-section { 
-            background: white; 
-            border-left: 4px solid var(--blue); 
-            padding: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
+        /* Right Section: Sequential Sidebar */
+        .sidebar { flex: 0 0 220px; display: flex; flex-direction: column; gap: 10px; }
+        .sidebar-section { background: white; border-left: 4px solid var(--blue); padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
 
         .header { font-size: 11px; font-weight: 800; color: var(--accent); border-bottom: 1px solid var(--accent); margin-bottom: 6px; text-transform: uppercase; }
         .blue-header { color: var(--blue); border-bottom-color: var(--blue); }
 
-        /* Scrunched Content Styling */
+        /* Typography */
         .team { display: flex; align-items: center; justify-content: space-between; font-weight: 700; height: 14px; }
-        .info { display: flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; }
         .logo { width: 14px; height: 14px; }
         .score { font-family: monospace; font-size: 10px; background: #f0f4f8; padding: 0 3px; border-radius: 2px; }
         .stats-line { font-size: 8.5px; color: #666; font-style: italic; margin-top: 3px; border-top: 1px solid #f0f0f0; padding-top: 2px; display: block; }
-        .headline { font-size: 8px; color: #2980b9; margin-top: 3px; line-height: 1.1; display: block; }
-
         .item { border-bottom: 1px solid #f5f5f5; padding: 4px 0; font-size: 9.5px; }
-        .time { color: var(--accent); font-weight: bold; font-size: 8px; }
+
+        /* DIAGNOSTICS PANEL */
+        #debug-console { 
+            position: fixed; bottom: 0; left: 0; width: 100%; 
+            background: #222; color: #0f0; font-family: monospace; 
+            font-size: 10px; max-height: 100px; overflow-y: auto; 
+            padding: 5px; border-top: 2px solid #e63946; z-index: 1000;
+        }
+        .err { color: #ff4d4d; }
     </style>
 </head>
 <body>
 
 <div class="dashboard">
     <div class="yesterday-main">
-        <div class="header">Yesterday's Roundup</div>
+        <div class="header">Yesterday's Results</div>
         <div id="y-content">Loading...</div>
     </div>
 
@@ -91,20 +59,31 @@
     </div>
 </div>
 
-<script>
-    // CRITICAL: Ensure this includes /v1/ for the MLB Stats API
-    const API = "/mlb-api/v1"; 
+<div id="debug-console">Console: Initializing...</div>
 
-    async function getGameDetails(gamePk) {
-        try {
-            const res = await fetch(`${API}/game/${gamePk}/content`);
-            const data = await res.json();
-            return data.editorial?.recap?.mlb?.headline || "";
-        } catch (e) { return ""; }
+<script>
+    // Point this to your Netlify function or redirect root
+    const API_BASE = "/mlb-api"; 
+    const consoleLog = document.getElementById('debug-console');
+
+    function log(msg, isErr = false) {
+        const span = document.createElement('div');
+        if (isErr) span.className = 'err';
+        span.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        consoleLog.appendChild(span);
+        consoleLog.scrollTop = consoleLog.scrollHeight;
+    }
+
+    async function fetchData(url) {
+        log(`Fetching: ${url}`);
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status} at ${url}`);
+        }
+        return await response.json();
     }
 
     async function load() {
-        // Use 2026-04-16 as the reference "Today" based on current context
         const dates = {
             y: "2026-04-15",
             t: "2026-04-16",
@@ -112,60 +91,53 @@
         };
 
         try {
-            // 1. Load Yesterday (Horizontal Floating Cards)
-            const yRes = await fetch(`${API}/schedule/games/?sportId=1&date=${dates.y}&hydrate=team,decisions(person)`);
-            const yData = await yRes.json();
+            // 1. Yesterday
+            const yData = await fetchData(`${API_BASE}/v1/schedule/games/?sportId=1&date=${dates.y}&hydrate=team,decisions(person)`);
             let yHtml = "";
             
             if (yData.dates?.[0]) {
-                for (const g of yData.dates[0].games) {
-                    const headline = await getGameDetails(g.gamePk);
+                yData.dates[0].games.forEach(g => {
                     const dec = g.decisions || {};
-                    
                     yHtml += `
                     <div class="game-card">
                         <div class="team">
-                            <div class="info"><img class="logo" src="https://www.mlbstatic.com/team-logos/${g.teams.away.team.id}.svg"> ${g.teams.away.team.teamName}</div>
+                            <span><img class="logo" src="https://www.mlbstatic.com/team-logos/${g.teams.away.team.id}.svg"> ${g.teams.away.team.name}</span>
                             <span class="score">${g.teams.away.score??0}</span>
                         </div>
                         <div class="team">
-                            <div class="info"><img class="logo" src="https://www.mlbstatic.com/team-logos/${g.teams.home.team.id}.svg"> ${g.teams.home.team.teamName}</div>
+                            <span><img class="logo" src="https://www.mlbstatic.com/team-logos/${g.teams.home.team.id}.svg"> ${g.teams.home.team.name}</span>
                             <span class="score">${g.teams.home.score??0}</span>
                         </div>
-                        <span class="stats-line">W: ${dec.winner?.fullName || 'N/A'}<br>L: ${dec.loser?.fullName || 'N/A'}</span>
-                        ${headline ? `<span class="headline">${headline}</span>` : ""}
+                        <span class="stats-line">W: ${dec.winner?.fullName || 'N/A'} | L: ${dec.loser?.fullName || 'N/A'}</span>
                     </div>`;
-                }
+                });
             }
-            document.getElementById('y-content').innerHTML = yHtml || "No games.";
+            document.getElementById('y-content').innerHTML = yHtml || "No games found.";
 
-            // 2. Load Sidebar (Vertical Layout)
-            async function fillSidebar(date, id) {
-                const res = await fetch(`${API}/schedule/games/?sportId=1&date=${date}&hydrate=team,probablePitcher`);
-                const data = await res.json();
+            // 2. Sidebar Sections
+            const fill = async (date, id) => {
+                const data = await fetchData(`${API_BASE}/v1/schedule/games/?sportId=1&date=${date}&hydrate=team,probablePitcher`);
                 let html = "";
                 if (data.dates?.[0]) {
                     data.dates[0].games.forEach(g => {
-                        const time = new Date(g.gameDate).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'});
                         html += `
                         <div class="item">
-                            <span class="time">${time}</span><br>
-                            <strong>${g.teams.away.team.teamName} @ ${g.teams.home.team.teamName}</strong><br>
+                            <strong>${g.teams.away.team.name} @ ${g.teams.home.team.name}</strong><br>
                             ${g.teams.away.probablePitcher?.fullName || 'TBD'} vs ${g.teams.home.probablePitcher?.fullName || 'TBD'}
                         </div>`;
                     });
                 }
                 document.getElementById(id).innerHTML = html || "Off Day";
-            }
+            };
 
-            fillSidebar(dates.t, 't-content');
-            fillSidebar(dates.tm, 'tom-content');
+            await Promise.all([fill(dates.t, 't-content'), fill(dates.tm, 'tom-content')]);
+            log("Load Complete.");
 
         } catch (e) {
-            console.error(e);
-            document.getElementById('y-content').innerHTML = "Failed to load API data.";
+            log(e.message, true);
         }
     }
+
     load();
 </script>
 </body>
