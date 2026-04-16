@@ -6,39 +6,43 @@
     <title>Daily Scoreboard</title>
     <style>
         :root { --line: #d1e5f0; --accent: #e63946; --text: #2c3e50; --blue: #3498db; }
-        body { font-family: 'Segoe UI', -apple-system, sans-serif; background: #fdfdfd; padding: 5px; color: var(--text); margin: 0; }
+        body { font-family: 'Segoe UI', sans-serif; background: #fdfdfd; padding: 5px; color: var(--text); margin: 0; overflow-x: hidden; }
         
+        /* 98-100% Viewport Width Layout */
         .dashboard { 
             display: flex; 
             width: 98vw; 
             margin: 0 auto; 
             gap: 10px; 
-            padding: 5px;
+            padding-top: 5px;
         }
 
-        /* BIGGER Yesterday Section with Floating Boxes */
+        /* BIGGER Yesterday Section - Floating Boxes */
         .yesterday-main { 
             flex: 1; 
             background: white; 
             border-left: 4px solid var(--accent); 
-            padding: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
+        
+        /* The container that lets boxes float left-to-right then down */
         #y-content { 
             display: flex; 
             flex-wrap: wrap; 
-            gap: 8px; 
+            gap: 6px; 
         }
-        .game-box { 
-            flex: 0 1 180px; /* Floating box width */
+
+        .game-card { 
+            flex: 0 1 190px; /* Floating box size */
             border: 1px solid #eee;
-            padding: 6px;
+            padding: 5px;
             border-radius: 3px;
-            font-size: 9px;
+            font-size: 9px; /* Tiny print */
             background: #fff;
         }
 
-        /* Smaller Sidebar for Today/Tomorrow */
+        /* Static Sidebar for Today/Tomorrow */
         .sidebar { 
             flex: 0 0 220px; 
             display: flex; 
@@ -48,22 +52,22 @@
         .sidebar-section { 
             background: white; 
             border-left: 4px solid var(--blue); 
-            padding: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
 
-        .header { font-size: 11px; font-weight: 800; color: var(--accent); border-bottom: 1px solid var(--accent); margin-bottom: 8px; text-transform: uppercase; }
+        .header { font-size: 11px; font-weight: 800; color: var(--accent); border-bottom: 1px solid var(--accent); margin-bottom: 6px; text-transform: uppercase; }
         .blue-header { color: var(--blue); border-bottom-color: var(--blue); }
 
-        /* Scrunched Typography */
-        .team { display: flex; align-items: center; justify-content: space-between; font-weight: 600; margin-bottom: 2px; }
-        .info { display: flex; align-items: center; gap: 4px; overflow: hidden; }
+        /* Scrunched Content Styling */
+        .team { display: flex; align-items: center; justify-content: space-between; font-weight: 700; height: 14px; }
+        .info { display: flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; }
         .logo { width: 14px; height: 14px; }
         .score { font-family: monospace; font-size: 10px; background: #f0f4f8; padding: 0 3px; border-radius: 2px; }
-        .stats-line { font-size: 8.5px; color: #777; font-style: italic; display: block; margin-top: 3px; border-top: 1px solid #f9f9f9; padding-top: 2px; }
-        .headline { font-size: 8px; color: #2980b9; margin-top: 4px; line-height: 1.1; }
+        .stats-line { font-size: 8.5px; color: #666; font-style: italic; margin-top: 3px; border-top: 1px solid #f0f0f0; padding-top: 2px; display: block; }
+        .headline { font-size: 8px; color: #2980b9; margin-top: 3px; line-height: 1.1; display: block; }
 
-        .item { border-bottom: 1px solid #f0f0f0; padding: 4px 0; font-size: 9.5px; }
+        .item { border-bottom: 1px solid #f5f5f5; padding: 4px 0; font-size: 9.5px; }
         .time { color: var(--accent); font-weight: bold; font-size: 8px; }
     </style>
 </head>
@@ -71,7 +75,7 @@
 
 <div class="dashboard">
     <div class="yesterday-main">
-        <div class="header">Yesterday's Results</div>
+        <div class="header">Yesterday's Roundup</div>
         <div id="y-content">Loading...</div>
     </div>
 
@@ -88,34 +92,38 @@
 </div>
 
 <script>
-    const API_BASE = "/mlb-api/v1"; // Corrected API path for Netlify redirects
+    // CRITICAL: Ensure this includes /v1/ for the MLB Stats API
+    const API = "/mlb-api/v1"; 
+
+    async function getGameDetails(gamePk) {
+        try {
+            const res = await fetch(`${API}/game/${gamePk}/content`);
+            const data = await res.json();
+            return data.editorial?.recap?.mlb?.headline || "";
+        } catch (e) { return ""; }
+    }
 
     async function load() {
-        const now = new Date();
-        const fmt = (d) => d.toISOString().split('T')[0];
+        // Use 2026-04-16 as the reference "Today" based on current context
         const dates = {
-            y: fmt(new Date(new Date().setDate(now.getDate() - 1))),
-            t: fmt(now),
-            tm: fmt(new Date(new Date().setDate(now.getDate() + 1)))
+            y: "2026-04-15",
+            t: "2026-04-16",
+            tm: "2026-04-17"
         };
 
         try {
-            // 1. Load Yesterday
-            const yRes = await fetch(`${API_BASE}/schedule/games/?sportId=1&date=${dates.y}&hydrate=team,decisions,person(stats(type=season))`);
+            // 1. Load Yesterday (Horizontal Floating Cards)
+            const yRes = await fetch(`${API}/schedule/games/?sportId=1&date=${dates.y}&hydrate=team,decisions(person)`);
             const yData = await yRes.json();
             let yHtml = "";
-
+            
             if (yData.dates?.[0]) {
                 for (const g of yData.dates[0].games) {
+                    const headline = await getGameDetails(g.gamePk);
                     const dec = g.decisions || {};
-                    const formatP = (p) => {
-                        if (!p) return "N/A";
-                        const s = p.seasonStats?.pitching;
-                        return s ? `${p.fullName} (${s.wins}-${s.losses})` : p.fullName;
-                    };
-
+                    
                     yHtml += `
-                    <div class="game-box">
+                    <div class="game-card">
                         <div class="team">
                             <div class="info"><img class="logo" src="https://www.mlbstatic.com/team-logos/${g.teams.away.team.id}.svg"> ${g.teams.away.team.teamName}</div>
                             <span class="score">${g.teams.away.score??0}</span>
@@ -124,15 +132,16 @@
                             <div class="info"><img class="logo" src="https://www.mlbstatic.com/team-logos/${g.teams.home.team.id}.svg"> ${g.teams.home.team.teamName}</div>
                             <span class="score">${g.teams.home.score??0}</span>
                         </div>
-                        <div class="stats-line">W: ${formatP(dec.winner)}<br>L: ${formatP(dec.loser)}</div>
+                        <span class="stats-line">W: ${dec.winner?.fullName || 'N/A'}<br>L: ${dec.loser?.fullName || 'N/A'}</span>
+                        ${headline ? `<span class="headline">${headline}</span>` : ""}
                     </div>`;
                 }
             }
             document.getElementById('y-content').innerHTML = yHtml || "No games.";
 
-            // 2. Load Sidebar
+            // 2. Load Sidebar (Vertical Layout)
             async function fillSidebar(date, id) {
-                const res = await fetch(`${API_BASE}/schedule/games/?sportId=1&date=${date}&hydrate=team,probablePitcher`);
+                const res = await fetch(`${API}/schedule/games/?sportId=1&date=${date}&hydrate=team,probablePitcher`);
                 const data = await res.json();
                 let html = "";
                 if (data.dates?.[0]) {
@@ -153,7 +162,8 @@
             fillSidebar(dates.tm, 'tom-content');
 
         } catch (e) {
-            document.getElementById('y-content').innerHTML = "Connection Error";
+            console.error(e);
+            document.getElementById('y-content').innerHTML = "Failed to load API data.";
         }
     }
     load();
