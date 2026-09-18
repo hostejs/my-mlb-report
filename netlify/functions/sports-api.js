@@ -1,12 +1,14 @@
 // netlify/functions/sports-api.js
 
 export const handler = async (event) => {
-  const { type, ids, startDate, endDate, season, sport, dates } = event.queryStringParameters;
+  // 1. Safely parse incoming query parameters first
+  const queryParams = event.queryStringParameters || {};
+  const { type, ids, startDate, endDate, season, sport, dates } = queryParams;
+
+  console.log("Received request params:", JSON.stringify(queryParams));
+  
   let targetUrl = '';
 
-  // Log incoming request details immediately
-  console.log("Received request with params:", JSON.stringify(queryParams));
-  
   // Route the request to the correct upstream API
   switch (type) {
     case 'mlb-teams':
