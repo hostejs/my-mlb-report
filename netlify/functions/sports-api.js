@@ -39,8 +39,9 @@ export const handler = async (event) => {
     const response = await fetch(targetUrl);
     
     if (!response.ok) {
+      const errorText = await response.text();
       console.error(`Upstream API failed (${response.status} ${response.statusText}):`, errorText);
-      return { 
+      return {
         statusCode: response.status, 
         body: JSON.stringify({ error: `Upstream error: ${response.statusText}` }) 
       };
