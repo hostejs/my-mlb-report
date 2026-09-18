@@ -4,6 +4,9 @@ export const handler = async (event) => {
   const { type, ids, startDate, endDate, season, sport, dates } = event.queryStringParameters;
   let targetUrl = '';
 
+  // Log incoming request details immediately
+  console.log("Received request with params:", JSON.stringify(queryParams));
+  
   // Route the request to the correct upstream API
   switch (type) {
     case 'mlb-teams':
@@ -23,6 +26,7 @@ export const handler = async (event) => {
       }
       break;
     default:
+      console.warn(`[400] Invalid or missing type parameter: "${type}"`);
       return { 
         statusCode: 400, 
         body: JSON.stringify({ error: 'Invalid or missing API type parameter' }) 
@@ -33,6 +37,7 @@ export const handler = async (event) => {
     const response = await fetch(targetUrl);
     
     if (!response.ok) {
+      console.error(`Upstream API failed (${response.status} ${response.statusText}):`, errorText);
       return { 
         statusCode: response.status, 
         body: JSON.stringify({ error: `Upstream error: ${response.statusText}` }) 
@@ -50,6 +55,7 @@ export const handler = async (event) => {
       body: JSON.stringify(data)
     };
   } catch (error) {
+    console.error("Unhandled execution error:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: error.message })
