@@ -18,7 +18,7 @@ export const handler = async (event) => {
       targetUrl = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&hydrate=probablePitcher&startDate=${startDate}&endDate=${endDate}`;
       break;
     case 'mlb-pitcher-stats':
-      targetUrl = `https://statsapi.mlb.com/api/v1/people?personIds=${ids}&hydrate=stats(group=[pitching],type=[byDateRange],startDate=${startDate},endDate=${endDate},season=${season})`;
+      targetUrl = `https://statsapi.mlb.com/api/v1/people?personIds=${ids}&hydrate=stats(group=[pitching],type=[gameLog],startDate=${startDate},endDate=${endDate})`;
       break;
     case 'espn-scoreboard':
       if (sport === 'football/nfl') {
