@@ -3,7 +3,7 @@
 export const handler = async (event) => {
   // 1. Safely parse incoming query parameters first
   const queryParams = event.queryStringParameters || {};
-  const { type, ids, startDate, endDate, season, sport, dates } = queryParams;
+  const { type, ids, startDate, endDate, dates } = queryParams;
 
   console.log("Received request params:", JSON.stringify(queryParams));
   
@@ -20,13 +20,18 @@ export const handler = async (event) => {
     case 'mlb-pitcher-stats':
       targetUrl = `https://statsapi.mlb.com/api/v1/people?personIds=${ids}&hydrate=stats(group=[pitching],type=[gameLog],startDate=${startDate},endDate=${endDate})`;
       break;
-    case 'espn-scoreboard':
-      if (sport === 'football/nfl') {
-        targetUrl = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard';
-      } else {
-        targetUrl = `https://site.api.espn.com/apis/site/v2/sports/${sport}/scoreboard?dates=${dates}`;
-      }
+    case 'nfl':
+      targetUrl = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard';
       break;
+    case 'mlb':
+      targetUrl = 'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard';
+      break;
+    case 'nhl':
+      targetUrl = 'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard';
+      break;
+    case 'nba':
+      targetUrl = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard';
+      break;  
     default:
       console.warn(`[400] Invalid or missing type parameter: "${type}"`);
       return { 
