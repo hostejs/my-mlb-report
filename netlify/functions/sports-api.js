@@ -2,7 +2,7 @@
 
 export const handler = async (event) => {
   const queryParams = event.queryStringParameters || {};
-  const { type, ids, startDate, endDate } = queryParams;
+  const { type, ids, startDate, endDate, espnDate } = queryParams;
 
   console.log("Received request params:", JSON.stringify(queryParams));
 
@@ -54,13 +54,9 @@ export const handler = async (event) => {
 
   try {
     if (scoreboardPath) {
-      
-      const yesterdayDate = new Date();
-
-      yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
 
       const dateStrings = [
-        `dates=${formatDate(yesterdayDate)}`,
+        `dates=${espnDate}`,
         ''
       ];
 
@@ -165,47 +161,3 @@ export const handler = async (event) => {
     };
   }
 };
-
-function parseDateTimeDate(datetime) {
-  if (datetime != null && datetime !== "") {
-    const match = String(datetime).match(
-      /^(\d{4})(\d{2})(\d{2})(?:\d{6})?$/
-    );
-
-    if (!match) {
-      throw new Error(
-        "Invalid datetime parameter; expected yyyyMMdd or yyyyMMddHHmmss"
-      );
-    }
-
-    const [, year, month, day] = match;
-
-    const parsed = new Date(
-      Date.UTC(Number(year), Number(month) - 1, Number(day))
-    );
-
-    if (
-      parsed.getUTCFullYear() !== Number(year) ||
-      parsed.getUTCMonth() !== Number(month) - 1 ||
-      parsed.getUTCDate() !== Number(day)
-    ) {
-      throw new Error("Invalid calendar date in datetime parameter");
-    }
-
-    return parsed;
-  }
-
-  const now = new Date();
-
-  return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-  );
-}
-
-function formatDate(date) {
-  return (
-    date.getUTCFullYear() +
-    String(date.getUTCMonth() + 1).padStart(2, "0") +
-    String(date.getUTCDate()).padStart(2, "0")
-  );
-}
