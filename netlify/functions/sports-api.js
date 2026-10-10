@@ -2,7 +2,7 @@
 
 export const handler = async (event) => {
   const queryParams = event.queryStringParameters || {};
-  const { type, ids, startDate, endDate, datetime } = queryParams;
+  const { type, ids, startDate, endDate } = queryParams;
 
   console.log("Received request params:", JSON.stringify(queryParams));
 
@@ -54,20 +54,20 @@ export const handler = async (event) => {
 
   try {
     if (scoreboardPath) {
-      const todayDate = parseDateTimeDate(datetime);
-      const yesterdayDate = new Date(todayDate.getTime());
+      
+      const yesterdayDate = new Date();
 
       yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
 
       const dateStrings = [
-        formatDate(yesterdayDate),
-        formatDate(todayDate)
+        `dates=${formatDate(yesterdayDate)}`,
+        ''
       ];
 
       const results = await Promise.all(
         dateStrings.map(async (dateString) => {
           const url =
-            `https://site.api.espn.com/apis/site/v2/sports/${scoreboardPath}/scoreboard?dates=${dateString}`;
+            `https://site.api.espn.com/apis/site/v2/sports/${scoreboardPath}/scoreboard?${dateString}`;
 
           const response = await fetch(url);
 
