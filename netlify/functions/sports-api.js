@@ -19,7 +19,7 @@ export const handler = async (event) => {
       break;
 
     case "mlb-pitcher-stats":
-      targetUrl = `https://statsapi.mlb.com/api/v1/people?personIds=${ids}&hydrate=stats(group=[pitching],type=[gameLog],startDate=${startDate},endDate=${endDate})`;
+      targetUrl = `https://statsapi.mlb.com/api/v1/people?personIds=${ids}&hydrate=stats(group=[pitching],type=[gameLog],startDate=${startDate},endDate=${endDate},season=${season},gameType=[R,P])`;
       break;
 
     case "nfl":
