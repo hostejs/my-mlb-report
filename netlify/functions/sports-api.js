@@ -2,7 +2,7 @@
 
 export const handler = async (event) => {
   const queryParams = event.queryStringParameters || {};
-  const { type, ids, startDate, endDate, espnDate } = queryParams;
+  const { type, ids, startDate, endDate } = queryParams;
 
   console.log("Received request params:", JSON.stringify(queryParams));
 
@@ -55,11 +55,18 @@ export const handler = async (event) => {
   try {
     if (scoreboardPath) {
 
-      const dateStrings = [
-        `dates=${espnDate}`,
-        ''
-      ];
+      const now = new Date();
+      const todayStr = now.toISOString().slice(0, 10).replace(/-/g, "");
 
+      const yesterday = new Date();
+      yesterday.setDate(now.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().slice(0, 10).replace(/-/g, "");
+
+      const dateStrings = [
+        `dates=${yesterdayStr}`,
+        `dates=${todayStr}`
+      ];
+      
       const results = await Promise.all(
         dateStrings.map(async (dateString) => {
           const url =
@@ -80,40 +87,25 @@ export const handler = async (event) => {
       );
 
       const [yesterdayData, todayData] = results;
-      const eventById = new Map();
 
-      for (const data of results) {
-        for (const game of (
-          Array.isArray(data.events) ? data.events : []
-        )) {
-          if (game && game.id != null) {
-            eventById.set(String(game.id), game);
-          }
-        }
-      }
+      // Extract all events without dropping duplicates
+      const yesterdayEvents = Array.isArray(yesterdayData?.events) ? yesterdayData.events : [];
+      const todayEvents = Array.isArray(todayData?.events) ? todayData.events : [];
 
-      const events = [...eventById.values()].sort((a, b) => {
+      // Combine both arrays directly and sort chronologically
+      const events = [...yesterdayEvents, ...todayEvents].sort((a, b) => {
         const aTime = Date.parse(a.date || "") || 0;
         const bTime = Date.parse(b.date || "") || 0;
         return aTime - bTime;
       });
-
-      const data = {
-        ...(todayData || yesterdayData),
-        events,
-        dayRange: {
-          yesterday: dateStrings[0],
-          today: dateStrings[1]
-        }
-      };
-
+      
       return {
         statusCode: 200,
         headers: {
           "Access-Control-Allow-Origin": "*",
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(events)
       };
     }
 
