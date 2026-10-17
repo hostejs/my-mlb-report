@@ -130,15 +130,24 @@ export const handler = async (event) => {
       };
     }
 
-    const data = await response.json();
+    const rawData = await response.json();
 
+    // If this was the single NFL call, extract and format 'events' identically
+    let events = [];
+    if (type === "nfl") {
+      events = Array.isArray(rawData?.events) ? rawData.events : [];      
+    }
+
+    // Return payload shape matching the 2-call scoreboards
+    const payload = type === "nfl" ? { events } : rawData;
+    
     return {
       statusCode: 200,
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify(payload)
     };
   } catch (error) {
     console.error("Unhandled execution error:", error);
