@@ -2,7 +2,7 @@
 
 export const handler = async (event) => {
   const queryParams = event.queryStringParameters || {};
-  const { type, ids, startDate, endDate } = queryParams;
+  const { type, ids, startDate, endDate, season } = queryParams;
 
   console.log("Received request params:", JSON.stringify(queryParams));
 
