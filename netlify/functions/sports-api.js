@@ -38,7 +38,9 @@ export const handler = async (event) => {
     case "nba":
       scoreboardPath = "basketball/nba";
       break;
-
+    case "cbb":
+      scoreboardPath = "basketball/mens-college-basketball";
+      break;
     default:
       return {
         statusCode: 400,
@@ -62,9 +64,14 @@ export const handler = async (event) => {
       yesterday.setDate(now.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().slice(0, 10).replace(/-/g, "");
 
+      var extraCollegeBBPart = "";
+      if (type === "cbb"){
+        extraCollegeBBPart = "&groups=0,7";
+      }
+      
       const dateStrings = [
-        `dates=${yesterdayStr}`,
-        `dates=${todayStr}`
+        `dates=${yesterdayStr}${extraCollegeBBPart}`,
+        `dates=${todayStr}${extraCollegeBBPart}`
       ];
       
       const results = await Promise.all(
