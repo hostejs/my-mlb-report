@@ -66,7 +66,7 @@ export const handler = async (event) => {
 
       var extraCollegeBBPart = "";
       if (type === "cbb"){
-        extraCollegeBBPart = "&groups=0,7";
+        extraCollegeBBPart = "&groups=7";
       }
       
       const dateStrings = [
