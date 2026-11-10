@@ -38,9 +38,11 @@ export const handler = async (event) => {
     case "nba":
       scoreboardPath = "basketball/nba";
       break;
-    case "cbb":
+    case "cbb1":
+    case "cbb2":
       scoreboardPath = "basketball/mens-college-basketball";
       break;
+      
     default:
       return {
         statusCode: 400,
@@ -65,8 +67,11 @@ export const handler = async (event) => {
       const yesterdayStr = yesterday.toISOString().slice(0, 10).replace(/-/g, "");
 
       var extraCollegeBBPart = "";
-      if (type === "cbb"){
+      if (type === "cbb1"){
         extraCollegeBBPart = "&groups=7";
+      }
+      else if (type === "cbb2"){
+        extraCollegeBBPart = "&groups=0";
       }
       
       const dateStrings = [
